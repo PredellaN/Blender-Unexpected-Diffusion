@@ -90,9 +90,10 @@ class UD_Processor():
             else:
                 mask_image = None
         
-        controlnet_image = []
-        for cn_image in params['controlnet_image_slot']:
-            controlnet_image.append(blender_image_to_pil(cn_image).resize((target_width, target_height)))
+        if 'controlnet_image_slot' in params:
+            controlnet_image = []
+            for cn_image in params['controlnet_image_slot']:
+                controlnet_image.append(blender_image_to_pil(cn_image).resize((target_width, target_height)))
 
 
         overrides={
