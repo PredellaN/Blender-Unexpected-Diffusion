@@ -1,5 +1,6 @@
 # Unexpected Diffusion Addon for Blender
 
+
 ## Overview
 Unexpected Diffusion is an addon for Blender that integrates SDXL into the Image Editor panel.
 
@@ -12,8 +13,12 @@ Unexpected Diffusion is an addon for Blender that integrates SDXL into the Image
 6. Click `Install` and navigate to the zip file.
 7. Check the box next to the addon name to enable it.
 
+## Features
+Basic SDXL functionality including img2img and inpainting, two custom upscaling techniques. Limited number of models available (i try to keep the list short and tested)
+
 ## Usage
 After installation, open the Image Editor in Blender. You'll find the "Misc" panel on the right side (use `N` if it's not visible). Adjust the settings according to your needs, and click "Run Unexpected Diffusion" to start generating images.
+Tested only with NVIDIA GPU (commits welcome for AMD / Intel / Apple GPUs) and only on Linux (it should work out of the box on windows as well)
 
 ### Parameters:
 - **Model**: Select the SDXL model you want to use for generation.
