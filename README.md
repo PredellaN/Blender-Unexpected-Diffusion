@@ -1,5 +1,5 @@
-# Unexpected Diffusion Addon for Blender
-![cat](https://github.com/PredellaN/Blender-Unexpected-Diffusion/assets/75480205/ba754c19-526b-4775-b60c-01cb6d4260ca)
+# Unexpected Diffusion - Stable Diffusion XL Addon for Blender
+![taormina at night(94846)](https://github.com/PredellaN/Blender-Unexpected-Diffusion/assets/75480205/5e0e83c5-1d87-47f7-851c-a714d8913f25)
 
 ## Overview
 Unexpected Diffusion is an addon for Blender that integrates SDXL into the Image Editor panel.
