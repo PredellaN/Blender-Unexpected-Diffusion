@@ -1,4 +1,5 @@
 import bpy, sys, os
+from bpy.utils import register_class, unregister_class
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 venv_path = os.path.join(script_dir, 'dependencies')
@@ -26,21 +27,26 @@ bl_info = {
     "category" : "Generic"
 }
 
-def register():
-    bpy.utils.register_class(op.Run_UD)
-    bpy.utils.register_class(op.Unload_UD)
+classes_to_register = [
+    op.Run_UD,
+    op.Unload_UD,
+    op.Controlnet_AddItem,
+    op.Controlnet_RemoveItem,
+    pg.ControlNetListItem,
+    pg.MY_UL_ControlNetList,
+    pg.UDPropertyGroup,
+    pn.UDPanel,
+]
 
-    bpy.utils.register_class(pg.UDPropertyGroup)
-    bpy.utils.register_class(pn.UDPanel)    
+def register():
+    for class_to_register in classes_to_register:
+        register_class(class_to_register)
 
     bpy.types.WorkSpace.ud = bpy.props.PointerProperty(type=pg.UDPropertyGroup)
 
 def unregister():
-    bpy.utils.unregister_class(op.Run_UD)
-    bpy.utils.unregister_class(op.Unload_UD)
-
-    bpy.utils.unregister_class(pg.UDPropertyGroup)
-    bpy.utils.unregister_class(pn.UDPanel)
+    for class_to_register in classes_to_register:
+        unregister_class(class_to_register)
 
 if __name__ == "__main__":
     register()

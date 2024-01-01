@@ -9,7 +9,6 @@ class UDPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        # Get the current workspace
         ws = bpy.context.workspace
         # ws.ud.running = 0
         
@@ -35,8 +34,19 @@ class UDPanel(bpy.types.Panel):
                     or item in ['denoise_strength', 'init_mask_slot'] and not ws.ud.init_image_slot  # Check for 'denoise_strength' or 'init_mask_slot' without an init image
                 ):
                     continue
-                
                 row.prop(ws.ud, item)
+
+        row = layout.row()
+        if len(ws.ud.controlnet_list) > 0:
+            row.template_list("MY_UL_ControlNetList", "Controlnets",
+                ws.ud, "controlnet_list",
+                ws.ud, "controlnet_list_index"
+                )
+            icon='ADD'
+        else:
+            icon='ORIENTATION_LOCAL'
+        col = layout.column(align=True)
+        col.operator("controlnet.add_item", icon=icon, text="Add ControlNet")
 
         row = layout.row()
         

@@ -10,8 +10,6 @@ print("Temporary file path:", temp_image_filepath)
 
 worker = ud.UD_Processor()
 
-
-
 class Run_UD(bpy.types.Operator):
     bl_idname = "image.run_ud"
     bl_label = "Run Unexpected Diffusion"
@@ -64,14 +62,25 @@ class Run_UD(bpy.types.Operator):
 
         ws.ud.running = 1
 
+        # Prepare parameters
         parameters = {prop.identifier: getattr(ws.ud, prop.identifier) 
                    for prop in pg.UDPropertyGroup.bl_rna.properties 
                    if not prop.is_readonly}
+        
         parameters['temp_image_filepath'] = temp_image_filepath
+
         if ws.ud.seed == 0:
             parameters['seed'] = random.randint(1, 99999)
+
+        for item in ws.ud.controlnet_list:
+            if item.controlnet_image_slot:
+                for entry in ['controlnet_model','controlnet_image_slot','controlnet_factor']:
+                    if not parameters.get(entry):
+                        parameters[entry]=[]
+                    parameters[entry].append(getattr(item, entry))
+
         parameters['mode'] = self.mode
-        print(parameters)   
+        print(parameters)
         
         for area in areas:
             if area.type == 'IMAGE_EDITOR':
@@ -92,4 +101,26 @@ class Unload_UD(bpy.types.Operator):
 
     def execute(self, context):
         worker.unload()
+        return {'FINISHED'}
+    
+class Controlnet_AddItem(bpy.types.Operator):
+    bl_idname = "controlnet.add_item"
+    bl_label = "Add ControlNet Item"
+
+    def execute(self, context):
+        ws = context.workspace  # Replace with your actual data path
+        ws.ud.controlnet_list.add()  # Adjust this line based on how you access your list
+
+        return {'FINISHED'}
+    
+class Controlnet_RemoveItem(bpy.types.Operator):
+    bl_idname = "controlnet.remove_item"
+    bl_label = "Remove Controlnet"
+
+    item_index: bpy.props.IntProperty()  
+
+    def execute(self, context):
+        ws = context.workspace
+        ws.ud.controlnet_list.remove(self.item_index)
+        
         return {'FINISHED'}

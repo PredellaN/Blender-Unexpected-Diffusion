@@ -89,8 +89,11 @@ class UD_Processor():
                     mask_image = None
             else:
                 mask_image = None
-            
-        controlnet_image = [Image.open(path).resize((target_width, target_height)).convert("RGB") for path in params['controlnet_image_path']] if params.get('controlnet_image_path') else None
+        
+        controlnet_image = []
+        for cn_image in params['controlnet_image_slot']:
+            controlnet_image.append(blender_image_to_pil(cn_image).resize((target_width, target_height)))
+
 
         overrides={
             'prompt': params['prompt'] + self.prompt_adds,
@@ -109,7 +112,7 @@ class UD_Processor():
                 pipeline_type = 'StableDiffusionXLControlNetImg2ImgPipeline' if init_image else 'StableDiffusionXLControlNetPipeline'
             overrides.update({
                 'image': init_image if init_image else controlnet_image,
-                'controlnet_conditioning_scale': params['controlnet_conditioning_scale'],
+                'controlnet_factor': params['controlnet_factor'],
             })
             if init_image:
                 overrides.update({
@@ -262,30 +265,26 @@ class UD_Processor():
             }
             pipe_params.update(overrides)
 
-            # CONTROLNET
-            if self.loaded_controlnets != controlnet_models:
-                if len(controlnet_models) == 0:
-                    self.loaded_controlnets = []
-                else:
-                    controlnets = [self.create_controlnet(controlnet) for controlnet in controlnet_models]
-                    self.loaded_controlnets = controlnets
-
-            # PIPELINE AND VAE
+            # CHANGES FOR SPECIFIC MODELS
             if pipeline_model in ['stablediffusionapi/NightVision_XL']:
                 vae_model = None
 
-            if self.loaded_model != pipeline_model or self.loaded_model_type != pipeline_type or self.loaded_vae != vae_model:
+            # INITIALIZE PIPE IF NEEDED
+            if self.loaded_model != pipeline_model or self.loaded_model_type != pipeline_type or self.loaded_vae != vae_model or self.loaded_controlnets != controlnet_models:
 
                 model_params = {
                     'torch_dtype': torch.float16,
                     'add_watermarker': False,
                 }
 
-                if vae_model:
-                    self.vae = AutoencoderKL.from_pretrained( vae_model, torch_dtype=torch.float16 ).to("cuda")
-                    model_params['vae'] = self.vae
-                self.loaded_vae = vae_model
+                # LOAD CONTROLNET
+                if controlnet_models:
+                    model_params['controlnet'] = [self.create_controlnet(controlnet) for controlnet in controlnet_models]
 
+                # LOAD VAE
+                if vae_model:
+                    model_params['vae'] = AutoencoderKL.from_pretrained( vae_model, torch_dtype=torch.float16 ).to("cuda")
+                
                 try:
                     try:
                         self.pipe = globals()[pipeline_type].from_pretrained(pipeline_model, **model_params, variant= 'fp16')
@@ -302,8 +301,11 @@ class UD_Processor():
                     self.unload()
                     return None
 
+                self.loaded_vae = vae_model
                 self.loaded_model = pipeline_model
                 self.loaded_model_type = pipeline_type
+                self.loaded_controlnets = controlnet_models
+                del model_params
 
             # CALCULATED SETTINGS
             pipe_params['num_inference_steps'] = int(pipe_params['num_inference_steps'] * params['steps_multiplier'])
@@ -338,16 +340,32 @@ class UD_Processor():
                 return decoded_image
         
     def create_controlnet(self, controlnet_model):
-        return ControlNetModel.from_pretrained(
-            controlnet_model,
-            variant="fp16",
-            use_safetensors=True,
-            torch_dtype=torch.float16,
-        ).to("cuda")        
+        model = None
+
+        try:
+            model = ControlNetModel.from_pretrained(controlnet_model, variant="fp16", use_safetensors=True, torch_dtype=torch.float16).to("cuda")     
+            return model
+        except Exception as e:
+            pass
+        
+        try:
+            model = ControlNetModel.from_pretrained(controlnet_model, use_safetensors=True, torch_dtype=torch.float16).to("cuda")
+            return model
+        except Exception as e:
+            pass
+
+        try:
+            model = ControlNetModel.from_pretrained(controlnet_model, torch_dtype=torch.float16).to("cuda")
+            return model
+        except Exception as e:
+            pass
+
+        return model
+   
 
     def unload(self):
 
-        for item in ['pipe','vae']:
+        for item in ['pipe']:
             if hasattr(self, item):
                 getattr(self, item).to('cpu')
                 delattr(self, item)

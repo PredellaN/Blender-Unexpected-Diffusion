@@ -11,6 +11,47 @@ SD_MODELS = [
     ('playgroundai/playground-v2-1024px-aesthetic','Playground V2 Aesthetic', ""),
 ]
 
+CONTROLNET_MODELS = [
+    ('diffusers/controlnet-depth-sdxl-1.0', 'controlnet-depth-sdxl-1.0', ''),
+    ('diffusers/controlnet-depth-sdxl-1.0-small', 'controlnet-depth-sdxl-1.0-small', ''),
+    ('diffusers/controlnet-depth-sdxl-1.0-mid', 'controlnet-depth-sdxl-1.0-mid', ''),
+    ('diffusers/controlnet-canny-sdxl-1.0', 'controlnet-canny-sdxl-1.0', ''),
+    ('diffusers/controlnet-canny-sdxl-1.0-small', 'controlnet-canny-sdxl-1.0-small', ''),
+    ('diffusers/controlnet-canny-sdxl-1.0-mid', 'controlnet-canny-sdxl-1.0-mid', ''),
+    ('Nacholmo/controlnet-qr-pattern-sdxl', 'controlnet-qr-pattern-sdxl', ''),
+    ('SargeZT/sdxl-controlnet-seg', 'sdxl-controlnet-seg', ''),
+    ('SargeZT/controlnet-sd-xl-1.0-softedge-dexined', 'controlnet-sd-xl-1.0-softedge-dexined', '')
+]
+
+class ControlNetListItem(bpy.types.PropertyGroup):
+    controlnet_model: bpy.props.EnumProperty(
+        name='',
+        items=CONTROLNET_MODELS
+    )
+    controlnet_image_slot: bpy.props.PointerProperty(
+        name='',
+        type=bpy.types.Image
+    )
+    controlnet_factor: bpy.props.FloatProperty(
+        name='',
+        min=0.0, max=1.0, step=0.05, default=0.5
+    )
+    
+class MY_UL_ControlNetList(bpy.types.UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+        row = layout.row()
+
+        delete_op = row.operator("controlnet.remove_item", text="", icon='X')
+        delete_op.item_index = index
+
+        row.prop(item, "controlnet_model")
+        row.prop(item, "controlnet_image_slot")
+        
+        col = row.column()
+        col.scale_x = 0.6
+        col.prop(item, "controlnet_factor")
+
+
 class UDPropertyGroup(bpy.types.PropertyGroup):
     model: bpy.props.EnumProperty(items=SD_MODELS, name="Model")
     prompt: bpy.props.StringProperty(name="Prompt", default="A close up of a cat with sunglasses driving a ferrari, golden hour")
@@ -83,6 +124,14 @@ class UDPropertyGroup(bpy.types.PropertyGroup):
         min=0,
         precision=2,
     )
+
+    controlnet_list : bpy.props.CollectionProperty(type=ControlNetListItem)
+    controlnet_list_index : bpy.props.IntProperty(
+        name="Search Result",
+        default=-1,
+        update=lambda self, context: setattr(self, 'controlnet_list_index', -1)
+    )
+
     running : bpy.props.BoolProperty(
         name="is running",
         default=0
