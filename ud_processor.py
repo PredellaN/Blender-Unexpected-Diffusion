@@ -194,7 +194,7 @@ class UD_Processor():
             realesrgan = Realesrgan(gpuid = gpudetector.get_nvidia_gpu(), model = 4)
             image = realesrgan.process_pil(image)
             realesrgan = None
-            upscaled_image = image.resize((current_width * 4, current_height * 4), Image.Resampling.LANCZOS)
+            upscaled_image = image.resize((current_width * 2, current_height * 2), Image.Resampling.LANCZOS)
             contrast=1.1
 
         elif params['mode'] == 'upscale_sd':

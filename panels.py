@@ -38,5 +38,5 @@ class UDPanel(bpy.types.Panel):
 
         row = layout.row()
         if ws.ud.running == 0:
-            row.operator("image.run_ud", text="Run Light 4x Upscaler", icon='ZOOM_IN').mode='upscale_re'
+            row.operator("image.run_ud", text="Run Light 2x Upscaler", icon='ZOOM_IN').mode='upscale_re'
             row.operator("image.run_ud", text="Run Heavy 2x Upscaler", icon='ZOOM_IN').mode='upscale_sd'
