@@ -35,6 +35,5 @@ Contributions are welcome, if you'd like to help improve Unexpected Diffusion, p
 This project is licensed under GPLv3
 
 ## TODO
-- Controlnet
-- Easier inpainting
-- Depth to controlnet
+- easier inpainting
+- blender depth to controlnet

@@ -18,7 +18,7 @@ if not os.path.exists(dependencies_dir):
     print(f"Created directory {dependencies_dir}")
 
 # List of dependencies to install
-dependencies = ["numpy", "torch", "Pillow", "realesrgan-ncnn-py", "vulkan"]
+dependencies = ["numpy", "torch", "Pillow", "realesrgan-ncnn-py", "vulkan", 'omegaconf']
 
 # Install each dependency
 print("Starting installation of dependencies...")

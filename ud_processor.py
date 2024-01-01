@@ -1,6 +1,7 @@
 from diffusers import DPMSolverMultistepScheduler, StableDiffusionXLControlNetPipeline, StableDiffusionXLPipeline, StableDiffusionUpscalePipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline, StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLControlNetImg2ImgPipeline, ControlNetModel, AutoencoderKL
 
 import bpy
+import os
 import numpy as np
 import torch
 # import debugpy
@@ -8,6 +9,9 @@ from PIL import Image, ImageEnhance
 from realesrgan_ncnn_py import Realesrgan
 from . import gpudetector
 
+from .constants import SD_MODELS, CONTROLNET_MODELS
+
+current_dir = os.path.dirname(os.path.realpath(__file__))
 
 # Install opencv-python-headless instead of regular opencv-python! Or you'll run into xcb conflicts
 
@@ -113,7 +117,7 @@ class UD_Processor():
                 pipeline_type = 'StableDiffusionXLControlNetImg2ImgPipeline' if init_image else 'StableDiffusionXLControlNetPipeline'
             overrides.update({
                 'image': init_image if init_image else controlnet_image,
-                'controlnet_factor': params['controlnet_factor'],
+                'controlnet_conditioning_scale': params['controlnet_factor'],
             })
             if init_image:
                 overrides.update({
@@ -343,23 +347,24 @@ class UD_Processor():
     def create_controlnet(self, controlnet_model):
         model = None
 
-        try:
-            model = ControlNetModel.from_pretrained(controlnet_model, variant="fp16", use_safetensors=True, torch_dtype=torch.float16).to("cuda")     
-            return model
-        except Exception as e:
-            pass
-        
-        try:
-            model = ControlNetModel.from_pretrained(controlnet_model, use_safetensors=True, torch_dtype=torch.float16).to("cuda")
-            return model
-        except Exception as e:
-            pass
+        if CONTROLNET_MODELS[controlnet_model]['model_type'] == 'diffusers':
+            try:
+                model = ControlNetModel.from_pretrained(controlnet_model, variant="fp16", use_safetensors=True, torch_dtype=torch.float16).to("cuda")     
+                return model
+            except Exception as e:
+                pass
+            
+            try:
+                model = ControlNetModel.from_pretrained(controlnet_model, use_safetensors=True, torch_dtype=torch.float16).to("cuda")
+                return model
+            except Exception as e:
+                pass
 
-        try:
-            model = ControlNetModel.from_pretrained(controlnet_model, torch_dtype=torch.float16).to("cuda")
-            return model
-        except Exception as e:
-            pass
+            try:
+                model = ControlNetModel.from_pretrained(controlnet_model, torch_dtype=torch.float16).to("cuda")
+                return model
+            except Exception as e:
+                pass
 
         return model
    

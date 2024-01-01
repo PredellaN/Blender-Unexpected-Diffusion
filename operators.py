@@ -73,7 +73,7 @@ class Run_UD(bpy.types.Operator):
             parameters['seed'] = random.randint(1, 99999)
 
         for item in ws.ud.controlnet_list:
-            if item.controlnet_image_slot:
+            if item.controlnet_image_slot and item.controlnet_factor > 0:
                 for entry in ['controlnet_model','controlnet_image_slot','controlnet_factor']:
                     if not parameters.get(entry):
                         parameters[entry]=[]

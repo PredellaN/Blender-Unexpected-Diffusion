@@ -10,7 +10,7 @@ class UDPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         ws = bpy.context.workspace
-        # ws.ud.running = 0
+        ws.ud.running = 0
         
         row = layout.row()
         row.label(text="Unexpected Diffusion", icon='UV')
@@ -56,7 +56,7 @@ class UDPanel(bpy.types.Panel):
         
         if ws.ud.running == 0:
             row.operator("image.run_ud", text="Run Unexpected Diffusion", icon='IMAGE').mode='generate'
-            row.operator("image.unload_ud", text="Release Memory", icon='CANCEL')
+            row.operator("image.unload_ud", text="Release Memory", icon='UNLINKED')
             row = layout.row()
             row.operator("image.run_ud", text="Run Light 2x Upscaler", icon='ZOOM_IN').mode='upscale_re'
             row.operator("image.run_ud", text="Run Heavy 2x Upscaler", icon='ZOOM_IN').mode='upscale_sd'

@@ -1,32 +1,15 @@
 import bpy
+from .constants import SD_MODELS, CONTROLNET_MODELS
 
-SD_MODELS = [
-    ('stablediffusionapi/NightVision_XL','NightVision_XL', ""),
-    ('stabilityai/stable-diffusion-xl-base-1.0','SDXL Base', ""),
-    ('segmind/SSD-1B','SSD-1B', ""),
-    ('stabilityai/sdxl-turbo','SDXL Turbo', ""),
-    ('Lykon/dreamshaper-xl-turbo','Dreamshaper XL Turbo',''),
-    ('Lykon/dreamshaper-xl-1-0','Dreamshaper XL 1.0',''),
-    ('stablediffusionapi/juggernaut-xl-v7','Juggernaut XL v7',''),
-    ('playgroundai/playground-v2-1024px-aesthetic','Playground V2 Aesthetic', ""),
-]
 
-CONTROLNET_MODELS = [
-    ('diffusers/controlnet-depth-sdxl-1.0', 'controlnet-depth-sdxl-1.0', ''),
-    ('diffusers/controlnet-depth-sdxl-1.0-small', 'controlnet-depth-sdxl-1.0-small', ''),
-    ('diffusers/controlnet-depth-sdxl-1.0-mid', 'controlnet-depth-sdxl-1.0-mid', ''),
-    ('diffusers/controlnet-canny-sdxl-1.0', 'controlnet-canny-sdxl-1.0', ''),
-    ('diffusers/controlnet-canny-sdxl-1.0-small', 'controlnet-canny-sdxl-1.0-small', ''),
-    ('diffusers/controlnet-canny-sdxl-1.0-mid', 'controlnet-canny-sdxl-1.0-mid', ''),
-    ('Nacholmo/controlnet-qr-pattern-sdxl', 'controlnet-qr-pattern-sdxl', ''),
-    ('SargeZT/sdxl-controlnet-seg', 'sdxl-controlnet-seg', ''),
-    ('SargeZT/controlnet-sd-xl-1.0-softedge-dexined', 'controlnet-sd-xl-1.0-softedge-dexined', '')
-]
 
 class ControlNetListItem(bpy.types.PropertyGroup):
+    def from_controlnet_models(self, context):
+        return [(id, model_info['name'], '') for id, model_info in CONTROLNET_MODELS.items()]
+    
     controlnet_model: bpy.props.EnumProperty(
         name='',
-        items=CONTROLNET_MODELS
+        items=from_controlnet_models
     )
     controlnet_image_slot: bpy.props.PointerProperty(
         name='',
@@ -34,7 +17,7 @@ class ControlNetListItem(bpy.types.PropertyGroup):
     )
     controlnet_factor: bpy.props.FloatProperty(
         name='',
-        min=0.0, max=1.0, step=0.05, default=0.5
+        min=0.0, max=5.0, step=0.05, default=0.5
     )
     
 class MY_UL_ControlNetList(bpy.types.UIList):
@@ -108,17 +91,17 @@ class UDPropertyGroup(bpy.types.PropertyGroup):
         precision=2,
     )
     init_image_slot: bpy.props.PointerProperty(
-        name="Init image slot",
+        name="Init Image",
         description="Enter the slot for an init image to condition the generation",
         type=bpy.types.Image
     )
     init_mask_slot: bpy.props.PointerProperty(
-        name="Mask image slot",
+        name="Mask Image",
         description="Enter the slot for a masking image for the inpainting generation",
         type=bpy.types.Image
     )
     denoise_strength: bpy.props.FloatProperty(
-        name='Denoise Strength',
+        name='Denoising Strength',
         max=1,
         default=0.4,
         min=0,
