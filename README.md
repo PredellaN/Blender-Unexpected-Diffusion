@@ -1,4 +1,4 @@
-# Unexpected Diffusion Addon for Blender
+# Unexpected Diffusion - Stable Diffusion XL Addon for Blender
 ![taormina at night(94846)](https://github.com/PredellaN/Blender-Unexpected-Diffusion/assets/75480205/5e0e83c5-1d87-47f7-851c-a714d8913f25)
 
 ## Overview
