@@ -283,15 +283,15 @@ class UD_Processor():
 
                 if vae_model:
                     self.vae = AutoencoderKL.from_pretrained( vae_model, torch_dtype=torch.float16 ).to("cuda")
-                    self.loaded_vae = vae_model
                     model_params['vae'] = self.vae
+                self.loaded_vae = vae_model
 
                 try:
                     try:
                         self.pipe = globals()[pipeline_type].from_pretrained(pipeline_model, **model_params, variant= 'fp16')
                         print("Loaded fp16 weights")
                     except Exception as e2:
-                        print(f"Failed with variant='fp16'. Falling back to original parameters.")
+                        print(f"fp16 variant not available. Using fp32.")
                         self.pipe = globals()[pipeline_type].from_pretrained(pipeline_model, **model_params)
 
                     self.pipe.to("cuda")
