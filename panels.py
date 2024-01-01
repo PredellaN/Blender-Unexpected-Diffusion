@@ -10,7 +10,7 @@ class UDPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         ws = bpy.context.workspace
-        ws.ud.running = 0
+        # ws.ud.running = 0
         
         row = layout.row()
         row.label(text="Unexpected Diffusion", icon='UV')

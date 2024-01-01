@@ -366,6 +366,9 @@ class UD_Processor():
             except Exception as e:
                 pass
 
+        if not model:
+            print("Failed to load Controlnet!")
+            
         return model
    
 
@@ -373,7 +376,7 @@ class UD_Processor():
 
         for item in ['pipe']:
             if hasattr(self, item):
-                getattr(self, item).to('cpu')
+                # getattr(self, item).to('cpu')
                 delattr(self, item)
 
         torch.cuda.empty_cache()

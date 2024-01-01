@@ -20,4 +20,5 @@ CONTROLNET_MODELS = {
     'SargeZT/sdxl-controlnet-seg': {'name': 'sdxl-controlnet-seg', 'model_type': 'diffusers'},
     'SargeZT/controlnet-sd-xl-1.0-softedge-dexined': {'name': 'controlnet-sd-xl-1.0-softedge-dexined', 'model_type': 'diffusers'},
     'monster-labs/control_v1p_sdxl_qrcode_monster': {'name': 'control_v1p_sdxl_qrcode_monster', 'model_type': 'diffusers'},
+    'diffusers/controlnet-zoe-depth-sdxl-1.0': {'name': 'controlnet-zoe-depth-sdxl-1.0', 'model_type': 'diffusers'},
 }
