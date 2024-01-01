@@ -16,15 +16,27 @@ class UDPanel(bpy.types.Panel):
         row = layout.row()
         row.label(text="Unexpected Diffusion", icon='UV')
 
-        for item in ['model','prompt','negative_prompt','scale','width','height','seed',
-                     'inference_steps','cfg_scale','high_noise_frac','refiner_strength','init_image_slot','denoise_strength','init_mask_slot']:
-            if (
-                item == 'refiner_strength' and ws.ud.high_noise_frac == 1  # Check for 'refiner_strength' with high noise
-                or item in ['denoise_strength', 'init_mask_slot'] and not ws.ud.init_image_slot  # Check for 'denoise_strength' or 'init_mask_slot' without an init image
-            ):
-                continue
+        for item_list in [
+            ['model'],
+            ['prompt'],
+            ['negative_prompt'],
+            ['scale','width','height'],
+            ['seed'],
+            ['inference_steps','cfg_scale'],
+            ['high_noise_frac','refiner_strength'],
+            ['init_image_slot'],
+            ['denoise_strength'],
+            ['init_mask_slot']]:
+            
             row = layout.row()
-            row.prop(ws.ud, item)
+            for item in item_list:
+                if (
+                    item == 'refiner_strength' and ws.ud.high_noise_frac == 1  # Check for 'refiner_strength' with high noise
+                    or item in ['denoise_strength', 'init_mask_slot'] and not ws.ud.init_image_slot  # Check for 'denoise_strength' or 'init_mask_slot' without an init image
+                ):
+                    continue
+                
+                row.prop(ws.ud, item)
 
         row = layout.row()
         

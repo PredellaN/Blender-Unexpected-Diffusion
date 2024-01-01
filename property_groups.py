@@ -5,13 +5,10 @@ SD_MODELS = [
     ('stabilityai/stable-diffusion-xl-base-1.0','SDXL Base', ""),
     ('segmind/SSD-1B','SSD-1B', ""),
     ('stabilityai/sdxl-turbo','SDXL Turbo', ""),
-    ('Lykon/dreamshaper-xl-turbo','Dreamshaper Turbo',''),
-    ('Lykon/dreamshaper-xl-1-0','Dreamshaper',''),
-    ('stablediffusionapi/juggernaut-xl-v7','Juggernaut',''),
-    # ('stablediffusionapi/newrealityxl-global-nsfw','Newrealityxl',''),
-    # ('SG161222/RealVisXL_V3.0','RealVisXL',''),
-    # ('misri/realismEngineSDXL_v20VAE', 'Realism Engine',''),
-    ('playgroundai/playground-v2-1024px-aesthetic','Playground V2', ""),
+    ('Lykon/dreamshaper-xl-turbo','Dreamshaper XL Turbo',''),
+    ('Lykon/dreamshaper-xl-1-0','Dreamshaper XL 1.0',''),
+    ('stablediffusionapi/juggernaut-xl-v7','Juggernaut XL v7',''),
+    ('playgroundai/playground-v2-1024px-aesthetic','Playground V2 Aesthetic', ""),
 ]
 
 class UDPropertyGroup(bpy.types.PropertyGroup):
