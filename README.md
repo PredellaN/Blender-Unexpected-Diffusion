@@ -7,7 +7,7 @@ Unexpected Diffusion is an addon for Blender that integrates SDXL into the Image
 ## Installation
 1. Download the addon from the GitHub repository.
 2. Unzip
-3. Install the dependencies using either the linux or windows script (windows script is untested).
+3. Install the dependencies using either the .sh linux or .bat windows script (windows script is untested, please report if it works as intended).
 4. Zip back
 5. Open Blender and go to `Edit > Preferences > Add-ons`.
 6. Click `Install` and navigate to the zip file.
