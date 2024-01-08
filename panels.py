@@ -64,3 +64,9 @@ class UDPanel(bpy.types.Panel):
         if ws.ud.running == 1:
             row.operator("image.run_ud", text="Unexpected Diffusion is running...", icon='IMAGE')
             row.enabled = False
+
+        row = layout.row()
+        row.label(text="Utilities", icon='TOOL_SETTINGS')
+
+        row = layout.row()
+        row.operator("generate.zdepthmap", text="Generate Z Depth Image", icon='IMAGE_ZDEPTH')

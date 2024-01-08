@@ -1,16 +1,20 @@
-import bpy, os, tempfile, threading, random
+import bpy, os, tempfile, threading, random, math
+from bpy.types import Operator
 import numpy as np
+from PIL import Image
 
 from . import property_groups as pg
 from . import ud_processor as ud
 
 # Create a temporary file path that works on both Windows and Unix-like systems
-temp_image_filepath = os.path.join(tempfile.gettempdir(), "temp.png")
-print("Temporary file path:", temp_image_filepath)
+temp_image_file = "temp.png"
+temp_folder = tempfile.gettempdir()
+
+temp_image_filepath = os.path.join(temp_folder, temp_image_file)
 
 worker = ud.UD_Processor()
 
-class Run_UD(bpy.types.Operator):
+class Run_UD(Operator):
     bl_idname = "image.run_ud"
     bl_label = "Run Unexpected Diffusion"
 
@@ -95,7 +99,7 @@ class Run_UD(bpy.types.Operator):
 
         return {'FINISHED'}
     
-class Unload_UD(bpy.types.Operator):
+class Unload_UD(Operator):
     bl_idname = "image.unload_ud"
     bl_label = "Release memory"
 
@@ -103,7 +107,7 @@ class Unload_UD(bpy.types.Operator):
         worker.unload()
         return {'FINISHED'}
     
-class Controlnet_AddItem(bpy.types.Operator):
+class Controlnet_AddItem(Operator):
     bl_idname = "controlnet.add_item"
     bl_label = "Add ControlNet Item"
 
@@ -113,7 +117,7 @@ class Controlnet_AddItem(bpy.types.Operator):
 
         return {'FINISHED'}
     
-class Controlnet_RemoveItem(bpy.types.Operator):
+class Controlnet_RemoveItem(Operator):
     bl_idname = "controlnet.remove_item"
     bl_label = "Remove Controlnet"
 
@@ -123,4 +127,113 @@ class Controlnet_RemoveItem(bpy.types.Operator):
         ws = context.workspace
         ws.ud.controlnet_list.remove(self.item_index)
         
+        return {'FINISHED'}
+    
+class Generate_ZDepthMap(Operator):
+    bl_idname = "generate.zdepthmap"
+    bl_label = "Generate Z Depth Map"
+
+    def execute(self, context):
+        context = bpy.context
+        ws = bpy.context.workspace
+
+        for area in bpy.context.screen.areas:
+            if area.type == 'IMAGE_EDITOR':
+                image_area = area
+
+        # Save Settings
+        settings_to_save = [
+            ('context.scene', 'camera'),
+            ('context.scene.render', 'engine'),
+            ('context.view_layer', 'use_pass_z'),
+            ('context.scene.eevee', 'taa_render_samples'),
+            ('context.scene.render','resolution_x'),
+            ('context.scene.render','resolution_y'),
+            ('context.scene.render','resolution_percentage'),
+        ]
+        
+        saved_settings = {}
+        for (obj_path, attr) in settings_to_save:
+            saved_settings[obj_path+'.'+attr] = getattr(eval(f"bpy.{obj_path}"), attr)
+
+        # Create a new camera
+        bpy.ops.object.camera_add()
+        temp_camera = bpy.context.object
+
+        # Align the new camera to the current view
+        for area in bpy.context.screen.areas:
+            if area.type == 'VIEW_3D':
+                rv3d = area.spaces[0].region_3d
+
+                vmat_inv = rv3d.view_matrix.inverted()
+                pmat = rv3d.perspective_matrix @ vmat_inv
+                fov = 2.0*math.atan(1.0/pmat[1][1])
+
+                temp_camera.location = rv3d.view_matrix.inverted().translation
+                temp_camera.rotation_euler = rv3d.view_rotation.to_euler()
+                temp_camera.data.angle = fov
+                context.scene.render.resolution_x = ws.ud.width
+                context.scene.render.resolution_y = ws.ud.height
+                context.scene.render.resolution_percentage = ws.ud.scale
+                break
+
+        # Set the new settings
+        context.scene.camera = temp_camera
+        context.scene.render.engine = 'BLENDER_EEVEE'
+        context.view_layer.use_pass_z = True
+        context.scene.eevee.taa_render_samples = 1
+
+        # Create input render layer node
+        context.scene.use_nodes = True
+        tree = context.scene.node_tree
+        links = tree.links
+
+        layers = tree.nodes.new('CompositorNodeRLayers')
+        layers.layer = context.window.view_layer.name
+
+        # Create normalize node
+        normalize = tree.nodes.new(type="CompositorNodeNormalize")
+
+        # Create invert node
+        invert_node = tree.nodes.new(type='CompositorNodeInvert')
+
+        # Color Space (not used, the current implementation does not visibily improve quality)
+        # color_space_node = tree.nodes.new(type='CompositorNodeConvertColorSpace')  # Color Space node
+        # color_space_node.from_color_space = 'AgX Log'  # Set input color space (if needed)
+        # color_space_node.to_color_space = 'Non-Color'  # Set output color space 
+
+        # Create File Output node
+        file_out = tree.nodes.new(type="CompositorNodeViewer")
+        tree.nodes.active = file_out
+        
+        links.new(layers.outputs['Depth'], normalize.inputs[0])
+        links.new(normalize.outputs[0], invert_node.inputs[1])
+        links.new(invert_node.outputs[0], file_out.inputs[0])
+
+        # # Render the scene
+        bpy.ops.render.render(layer="ViewLayer", write_still=True)
+
+        # # Save image
+        image = bpy.data.images['Viewer Node']
+        temp_filepath = temp_image_filepath
+        image.save_render(filepath=temp_filepath)
+        
+        # # Clean up
+        bpy.data.objects.remove(temp_camera)
+        for node in [layers, normalize, invert_node, file_out]:
+            tree.nodes.remove(node)
+
+        # Load the image in the depth slot
+        image = bpy.data.images.load(temp_image_filepath)
+        image.name = 'depth'
+        image_area.spaces.active.image = image
+
+        if 'depth.001' in bpy.data.images:
+            bpy.data.images.remove(bpy.data.images['depth.001'])
+
+        # Restore Settings
+        for (obj_path, attr) in settings_to_save:
+            obj = eval(f"bpy.{obj_path}")
+            setattr(obj, attr, saved_settings[obj_path+'.'+attr])
+            
         return {'FINISHED'}
