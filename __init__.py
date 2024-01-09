@@ -30,7 +30,7 @@ bl_info = {
 classes_to_register = [
     op.Run_UD,
     op.Unload_UD,
-    op.Generate_ZDepthMap,
+    op.Generate_Map,
     op.Controlnet_AddItem,
     op.Controlnet_RemoveItem,
     pg.ControlNetListItem,

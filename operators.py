@@ -2,6 +2,7 @@ import bpy, os, tempfile, threading, random, math
 from bpy.types import Operator
 import numpy as np
 from PIL import Image
+import cv2
 
 from . import property_groups as pg
 from . import ud_processor as ud
@@ -90,7 +91,7 @@ class Run_UD(Operator):
             if area.type == 'IMAGE_EDITOR':
                 image_area = area
 
-        if self.mode == 'generate': 
+        if self.mode in ['generate']: 
             thread = threading.Thread(target=self.ud_task, args=[parameters, image_area, ws])
         elif self.mode in ['upscale_sd','upscale_re']:
             thread = threading.Thread(target=self.ud_upscale_task, args=[parameters, image_area, ws])
@@ -129,9 +130,11 @@ class Controlnet_RemoveItem(Operator):
         
         return {'FINISHED'}
     
-class Generate_ZDepthMap(Operator):
-    bl_idname = "generate.zdepthmap"
-    bl_label = "Generate Z Depth Map"
+class Generate_Map(Operator):
+    bl_idname = "generate.map"
+    bl_label = "Generate Map"
+
+    mode: bpy.props.StringProperty()
 
     def execute(self, context):
         context = bpy.context
@@ -146,6 +149,7 @@ class Generate_ZDepthMap(Operator):
             ('context.scene', 'camera'),
             ('context.scene.render', 'engine'),
             ('context.view_layer', 'use_pass_z'),
+            ('context.view_layer', 'use_pass_normal'),
             ('context.scene.eevee', 'taa_render_samples'),
             ('context.scene.render','resolution_x'),
             ('context.scene.render','resolution_y'),
@@ -181,34 +185,64 @@ class Generate_ZDepthMap(Operator):
         context.scene.camera = temp_camera
         context.scene.render.engine = 'BLENDER_EEVEE'
         context.view_layer.use_pass_z = True
+        context.view_layer.use_pass_normal = True
         context.scene.eevee.taa_render_samples = 1
 
+        # # Setup Compositor
         # Create input render layer node
         context.scene.use_nodes = True
         tree = context.scene.node_tree
         links = tree.links
+        node_setup = {}
 
-        layers = tree.nodes.new('CompositorNodeRLayers')
-        layers.layer = context.window.view_layer.name
-
-        # Create normalize node
-        normalize = tree.nodes.new(type="CompositorNodeNormalize")
-
-        # Create invert node
-        invert_node = tree.nodes.new(type='CompositorNodeInvert')
-
-        # Color Space (not used, the current implementation does not visibily improve quality)
-        # color_space_node = tree.nodes.new(type='CompositorNodeConvertColorSpace')  # Color Space node
-        # color_space_node.from_color_space = 'AgX Log'  # Set input color space (if needed)
-        # color_space_node.to_color_space = 'Non-Color'  # Set output color space 
+        # Create Render Layer node
+        node_setup['layers'] = tree.nodes.new('CompositorNodeRLayers')
+        node_setup['layers'].layer = context.window.view_layer.name
 
         # Create File Output node
-        file_out = tree.nodes.new(type="CompositorNodeViewer")
-        tree.nodes.active = file_out
-        
-        links.new(layers.outputs['Depth'], normalize.inputs[0])
-        links.new(normalize.outputs[0], invert_node.inputs[1])
-        links.new(invert_node.outputs[0], file_out.inputs[0])
+        node_setup['file_out'] = tree.nodes.new(type="CompositorNodeViewer")
+        tree.nodes.active = node_setup['file_out']
+
+        if self.mode in ['depth', 'canny']:
+            node_setup['normalize'] = tree.nodes.new(type="CompositorNodeNormalize")
+            node_setup['invert_node'] = tree.nodes.new(type='CompositorNodeInvert')
+
+            links.new(node_setup['layers'].outputs['Depth'], node_setup['normalize'].inputs[0])
+            links.new(node_setup['normalize'].outputs[0], node_setup['invert_node'].inputs[1])
+
+        if self.mode in ['depth']:
+            links.new(node_setup['invert_node'].outputs[0], node_setup['file_out'].inputs[0])
+
+        elif self.mode in ['canny']:
+            node_setup['separatexyz'] = tree.nodes.new(type="CompositorNodeSeparateXYZ")
+            node_setup['combinexyz'] = tree.nodes.new(type="CompositorNodeCombineXYZ")
+
+            links.new(node_setup['layers'].outputs['Normal'], node_setup['separatexyz'].inputs[0])
+            
+            for key, axis in enumerate(['x', 'y', 'z']):
+                node_setup[f'sum_{axis}'] = tree.nodes.new(type="CompositorNodeMath")
+                node_setup[f'sum_{axis}'].operation = 'ADD'
+                node_setup[f'sum_{axis}'].inputs[1].default_value = 1
+
+                node_setup[f'divide_{axis}'] = tree.nodes.new(type="CompositorNodeMath")
+                node_setup[f'divide_{axis}'].operation = 'DIVIDE'
+                node_setup[f'divide_{axis}'].inputs[1].default_value = 2
+
+                links.new(node_setup['separatexyz'].outputs[key], node_setup[f'sum_{axis}'].inputs[0])
+                links.new(node_setup[f'sum_{axis}'].outputs[0], node_setup[f'divide_{axis}'].inputs[0])
+                links.new(node_setup[f'divide_{axis}'].outputs[0], node_setup['combinexyz'].inputs[key])
+
+            node_setup['separate_color'] = tree.nodes.new(type="CompositorNodeSeparateColor")
+            node_setup['separate_color'].mode = 'HSV'
+            links.new(node_setup['combinexyz'].outputs[0], node_setup['separate_color'].inputs[0])
+
+            node_setup['combine_color'] = tree.nodes.new(type="CompositorNodeCombineColor")
+            node_setup['combine_color'].mode = 'HSV'
+            links.new(node_setup['separate_color'].outputs[0], node_setup['combine_color'].inputs[0])
+            links.new(node_setup['separate_color'].outputs[1], node_setup['combine_color'].inputs[1])
+            links.new(node_setup['invert_node'].outputs[0], node_setup['combine_color'].inputs[2])
+
+            links.new(node_setup['combine_color'].outputs[0], node_setup['file_out'].inputs[0])
 
         # # Render the scene
         bpy.ops.render.render(layer="ViewLayer", write_still=True)
@@ -218,18 +252,28 @@ class Generate_ZDepthMap(Operator):
         temp_filepath = temp_image_filepath
         image.save_render(filepath=temp_filepath)
         
-        # # Clean up
-        bpy.data.objects.remove(temp_camera)
-        for node in [layers, normalize, invert_node, file_out]:
-            tree.nodes.remove(node)
+        # Out-of-blender processing
+        if self.mode in ['canny']:
+            image = cv2.imread(temp_image_filepath)
+
+            edges = cv2.Canny(image, 50, 100)
+            cv2.imwrite(temp_image_filepath, edges)
 
         # Load the image in the depth slot
-        image = bpy.data.images.load(temp_image_filepath)
-        image.name = 'depth'
-        image_area.spaces.active.image = image
+        slot_name = self.mode
+        if slot_name in bpy.data.images:
+            bpy.data.images[slot_name].filepath = temp_image_filepath
+            bpy.data.images[slot_name].reload()
+        else:
+            image = bpy.data.images.load(temp_image_filepath)
+            image.name = slot_name
 
-        if 'depth.001' in bpy.data.images:
-            bpy.data.images.remove(bpy.data.images['depth.001'])
+        image_area.spaces.active.image = bpy.data.images[slot_name]
+
+        # # Clean up
+        bpy.data.objects.remove(temp_camera)
+        for key, node in node_setup.items():
+            tree.nodes.remove(node)
 
         # Restore Settings
         for (obj_path, attr) in settings_to_save:

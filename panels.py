@@ -69,4 +69,7 @@ class UDPanel(bpy.types.Panel):
         row.label(text="Utilities", icon='TOOL_SETTINGS')
 
         row = layout.row()
-        row.operator("generate.zdepthmap", text="Generate Z Depth Image", icon='IMAGE_ZDEPTH')
+        row.operator("generate.map", text="Generate Z Depth Image", icon='IMAGE_ZDEPTH').mode='depth'
+
+        row = layout.row()
+        row.operator("generate.map", text="Generate Canny Edge Image", icon='IMAGE_ZDEPTH').mode='canny'
