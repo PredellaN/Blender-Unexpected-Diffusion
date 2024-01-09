@@ -256,7 +256,7 @@ class Generate_Map(Operator):
         if self.mode in ['canny']:
             image = cv2.imread(temp_image_filepath)
 
-            edges = cv2.Canny(image, 50, 100)
+            edges = cv2.Canny(image, 60, 120)
             cv2.imwrite(temp_image_filepath, edges)
 
         # Load the image in the depth slot
