@@ -45,3 +45,4 @@ This project is licensed under GPLv3
 - batch generation
 - progress bar
 - low memory warnings (using gpudetector info and heuristics)
+- tileable texture generator from image
