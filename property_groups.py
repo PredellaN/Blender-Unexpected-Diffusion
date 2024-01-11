@@ -1,8 +1,6 @@
 import bpy
 from .constants import SD_MODELS, CONTROLNET_MODELS
 
-
-
 class ControlNetListItem(bpy.types.PropertyGroup):
     def from_controlnet_models(self, context):
         return [(id, model_info['name'], '') for id, model_info in CONTROLNET_MODELS.items()]
