@@ -76,10 +76,10 @@ class UD_Processor():
     loaded_vae = None
     loaded_controlnets = None
 
-    workspace = None
+    ws = None
 
     def run(self, ws, params):
-        self.workspace = ws
+        self.ws = ws
 
         target_width = round((params['width'] * params['scale'] / 100) / 8) * 8
         target_height = round((params['height'] * params['scale'] / 100) / 8) * 8
@@ -190,7 +190,8 @@ class UD_Processor():
         else:
             return None
 
-    def upscale(self, params): 
+    def upscale(self, ws, params): 
+        self.ws = ws
 
         image = Image.open(params['temp_image_filepath'])
 
@@ -200,6 +201,11 @@ class UD_Processor():
         params['steps_multiplier'] = 0.5 if 'turbo' in params['model'] else 1
 
         if params['mode'] == 'upscale_re':
+
+            
+            self.ws.ud.progress = 0
+            self.ws.ud.progress_text = 'Resizing with Realesrgan ...'
+
             # Resize to 4x using realesrgan
             realesrgan = Realesrgan(gpuid = gpudetector.get_nvidia_gpu(), model = 4)
             image = realesrgan.process_pil(image)
@@ -263,6 +269,8 @@ class UD_Processor():
             output_type = 'latent',
         ):
 
+        self.ws.ud.progress = 0
+
         with torch.no_grad(): 
             # Initializing dict with common parameters
             pipe_params = {
@@ -279,7 +287,8 @@ class UD_Processor():
 
             # INITIALIZE PIPE IF NEEDED
             if self.loaded_model != pipeline_model or self.loaded_model_type != pipeline_type or self.loaded_vae != vae_model or self.loaded_controlnets != controlnet_models:
-
+                
+                self.ws.ud.progress_text = 'Loading pipeline...'
                 model_params = {
                     'torch_dtype': torch.float16,
                     'add_watermarker': False,
@@ -349,15 +358,15 @@ class UD_Processor():
                 return decoded_image
             
     def pipe_callback(self, pipe, step_index, timestep, callback_kwargs):
-        ws = self.workspace
 
-        if ws.ud.stop_process == 1:
-            ws.ud.stop_process = 0
+        if self.ws.ud.stop_process == 1:
+            self.ws.ud.stop_process = 0
             raise Exception("Inference cancelled.") ## No cleaner way found
 
-        ws.ud.progress = int((step_index + 1) / pipe.num_timesteps * 100)
-        ws.ud.progress_text = f'Step {step_index + 1} / {pipe.num_timesteps}'
-        for screen in ws.screens:
+        self.ws.ud.progress = int((step_index + 1) / pipe.num_timesteps * 100)
+        self.ws.ud.progress_text = f'Step {step_index + 1} / {pipe.num_timesteps}'
+
+        for screen in self.ws.screens:
             for area in screen.areas:
                 area.tag_redraw()
 

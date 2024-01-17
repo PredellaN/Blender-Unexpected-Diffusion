@@ -49,7 +49,7 @@ class Run_UD(Operator):
                 bpy.data.images[space.image.name].save_render(parameters['temp_image_filepath'])
                 bpy.context.scene.view_settings.view_transform = original_view_transform
 
-                worker.upscale(params = parameters)
+                worker.upscale(ws, params = parameters)
 
                 image = bpy.data.images.load(parameters['temp_image_filepath'])
                 image.name = parameters['prompt'][:57] + "-" + str(parameters['seed'])
@@ -67,7 +67,7 @@ class Run_UD(Operator):
 
         ws.ud.running = 1
         ws.ud.progress = 0
-        ws.ud.progress_text = "Unexpected Diffusion is running..."
+        ws.ud.progress_text = ""
 
         # Prepare parameters
         parameters = {prop.identifier: getattr(ws.ud, prop.identifier) 
