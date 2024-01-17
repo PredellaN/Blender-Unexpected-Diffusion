@@ -24,7 +24,7 @@ class Run_UD(Operator):
     def ud_task(self, parameters, image_area, ws):
 
         try:
-            result = worker.run(params = parameters)
+            result = worker.run(ws, params = parameters)
 
             if result:
                 image = bpy.data.images.load(parameters['temp_image_filepath'])
@@ -66,6 +66,8 @@ class Run_UD(Operator):
         ws = bpy.context.workspace
 
         ws.ud.running = 1
+        ws.ud.progress = 0
+        ws.ud.progress_text = "Unexpected Diffusion is running..."
 
         # Prepare parameters
         parameters = {prop.identifier: getattr(ws.ud, prop.identifier) 
@@ -106,6 +108,15 @@ class Unload_UD(Operator):
 
     def execute(self, context):
         worker.unload()
+        return {'FINISHED'}
+    
+class Stop_UD(Operator):
+    bl_idname = "image.stop_ud"
+    bl_label = "Stop generation"
+
+    def execute(self, context):
+        ws = context.workspace
+        ws.ud.stop_process = 1
         return {'FINISHED'}
     
 class Controlnet_AddItem(Operator):

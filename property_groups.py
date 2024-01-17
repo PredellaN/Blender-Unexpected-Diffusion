@@ -113,7 +113,7 @@ class UDPropertyGroup(bpy.types.PropertyGroup):
         update=lambda self, context: setattr(self, 'controlnet_list_index', -1)
     )
 
-    running : bpy.props.BoolProperty(
-        name="is running",
-        default=0
-    )
+    running : bpy.props.BoolProperty(name="is running", default=0)
+    progress : bpy.props.IntProperty(name="", min=0, max=100, default=0)
+    progress_text : bpy.props.StringProperty(name="")
+    stop_process: bpy.props.BoolProperty(name="stop", default=0)

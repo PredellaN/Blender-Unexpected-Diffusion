@@ -53,17 +53,25 @@ class UDPanel(bpy.types.Panel):
         col.operator("controlnet.add_item", icon=icon, text="Add ControlNet")
 
         row = layout.row()
-        
+        row = row.separator(factor = 2)
+
         if ws.ud.running == 0:
+            row = layout.row()
             row.operator("image.run_ud", text="Run Unexpected Diffusion", icon='IMAGE').mode='generate'
             row.operator("image.unload_ud", text="Release Memory", icon='UNLINKED')
             row = layout.row()
             row.operator("image.run_ud", text="Run Light 2x Upscaler", icon='ZOOM_IN').mode='upscale_re'
             row.operator("image.run_ud", text="Run Heavy 2x Upscaler", icon='ZOOM_IN').mode='upscale_sd'
 
+            row = layout.row()
+            row = row.separator(factor = 2)
+
         if ws.ud.running == 1:
-            row.operator("image.run_ud", text="Unexpected Diffusion is running...", icon='IMAGE')
+            row = layout.row()
+            row.prop(ws.ud, "progress", text=ws.ud.progress_text, slider=True)
             row.enabled = False
+            row = layout.row()
+            row.operator("image.stop_ud", text="Stop Generation", icon='QUIT')
 
         row = layout.row()
         row.label(text="Utilities", icon='TOOL_SETTINGS')

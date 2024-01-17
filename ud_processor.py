@@ -4,7 +4,6 @@ import bpy
 import os
 import numpy as np
 import torch
-# import debugpy
 from PIL import Image, ImageEnhance
 from realesrgan_ncnn_py import Realesrgan
 from . import gpudetector
@@ -77,8 +76,11 @@ class UD_Processor():
     loaded_vae = None
     loaded_controlnets = None
 
-    def run(self, params):
-        # debugpy.listen
+    workspace = None
+
+    def run(self, ws, params):
+        self.workspace = ws
+
         target_width = round((params['width'] * params['scale'] / 100) / 8) * 8
         target_height = round((params['height'] * params['scale'] / 100) / 8) * 8
 
@@ -248,6 +250,7 @@ class UD_Processor():
             )
         return decoded_image
 
+
     def run_pipeline(
             self,
             params,
@@ -326,6 +329,7 @@ class UD_Processor():
                 latent_image = self.pipe(
                     **pipe_params,
                     output_type='latent',
+                    callback_on_step_end=self.pipe_callback
                 ).images
             except Exception as e:
                 print(f"UD: Error occurred while running the pipeline:\n\n{e}")
@@ -343,6 +347,21 @@ class UD_Processor():
                 return latent_image
             elif output_type == 'pil':
                 return decoded_image
+            
+    def pipe_callback(self, pipe, step_index, timestep, callback_kwargs):
+        ws = self.workspace
+
+        if ws.ud.stop_process == 1:
+            ws.ud.stop_process = 0
+            raise Exception("Inference cancelled.") ## No cleaner way found
+
+        ws.ud.progress = int((step_index + 1) / pipe.num_timesteps * 100)
+        ws.ud.progress_text = f'Step {step_index + 1} / {pipe.num_timesteps}'
+        for screen in ws.screens:
+            for area in screen.areas:
+                area.tag_redraw()
+
+        return callback_kwargs
         
     def create_controlnet(self, controlnet_model):
         model = None
