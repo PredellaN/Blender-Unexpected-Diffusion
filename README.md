@@ -43,6 +43,5 @@ This project is licensed under GPLv3
 - utility to generate also segmentation map
 - seamless generation
 - batch generation
-- progress bar
 - low memory warnings (using gpudetector info and heuristics)
 - tileable texture generator from image
