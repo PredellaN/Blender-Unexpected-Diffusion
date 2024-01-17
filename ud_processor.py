@@ -201,7 +201,6 @@ class UD_Processor():
         params['steps_multiplier'] = 0.5 if 'turbo' in params['model'] else 1
 
         if params['mode'] == 'upscale_re':
-
             
             self.ws.ud.progress = 0
             self.ws.ud.progress_text = 'Resizing with Realesrgan ...'
