@@ -54,7 +54,6 @@ class UDPanel(bpy.types.Panel):
 
         row = layout.row()
         row = row.separator(factor = 2)
-
         if ws.ud.running == 0:
             row = layout.row()
             row.operator("image.run_ud", text="Run Unexpected Diffusion", icon='IMAGE').mode='generate'
@@ -62,9 +61,6 @@ class UDPanel(bpy.types.Panel):
             row = layout.row()
             row.operator("image.run_ud", text="Run Light 2x Upscaler", icon='ZOOM_IN').mode='upscale_re'
             row.operator("image.run_ud", text="Run Heavy 2x Upscaler", icon='ZOOM_IN').mode='upscale_sd'
-
-            row = layout.row()
-            row = row.separator(factor = 2)
 
         if ws.ud.running == 1:
             row = layout.row()
@@ -74,10 +70,12 @@ class UDPanel(bpy.types.Panel):
             row.operator("image.stop_ud", text="Stop Generation", icon='QUIT')
 
         row = layout.row()
+        row = row.separator(factor = 2)
+        row = layout.row()
         row.label(text="Utilities", icon='TOOL_SETTINGS')
 
         row = layout.row()
-        row.operator("generate.map", text="Generate Z Depth Image", icon='IMAGE_ZDEPTH').mode='depth'
+        row.operator("generate.map", text="Generate Depth Image from 3D", icon='IMAGE_ZDEPTH').mode='depth'
 
         row = layout.row()
-        row.operator("generate.map", text="Generate Canny Edge Image", icon='IMAGE_ZDEPTH').mode='canny'
+        row.operator("generate.map", text="Generate Canny Edge Image from 3D", icon='IMAGE_ZDEPTH').mode='canny'
