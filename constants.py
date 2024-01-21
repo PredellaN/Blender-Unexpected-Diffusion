@@ -22,3 +22,12 @@ CONTROLNET_MODELS = {
     'monster-labs/control_v1p_sdxl_qrcode_monster': {'name': 'control_v1p_sdxl_qrcode_monster', 'model_type': 'diffusers'},
     'diffusers/controlnet-zoe-depth-sdxl-1.0': {'name': 'controlnet-zoe-depth-sdxl-1.0', 'model_type': 'diffusers'},
 }
+
+T2I_MODELS = {
+    'TencentARC/t2i-adapter-canny-sdxl-1.0': {'name': 't2i-adapter-canny-sdxl-1.0', 'model_type': 'diffusers'},
+    'TencentARC/t2i-adapter-sketch-sdxl-1.0': {'name': 't2i-adapter-sketch-sdxl-1.0', 'model_type': 'diffusers'},
+    'TencentARC/t2i-adapter-lineart-sdxl-1.0': {'name': 't2i-adapter-lineart-sdxl-1.0', 'model_type': 'diffusers'},
+    'TencentARC/t2i-adapter-depth-midas-sdxl-1.0': {'name': 't2i-adapter-depth-midas-sdxl-1.0', 'model_type': 'diffusers'},
+    'TencentARC/t2i-adapter-depth-zoe-sdxl-1.0': {'name': 't2i-adapter-depth-zoe-sdxl-1.0', 'model_type': 'diffusers'},
+    'TencentARC/t2i-adapter-openpose-sdxl-1.0': {'name': 't2i-adapter-openpose-sdxl-1.0', 'model_type': 'diffusers'},
+}

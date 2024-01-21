@@ -1,4 +1,4 @@
-from diffusers import DPMSolverMultistepScheduler, StableDiffusionXLControlNetPipeline, StableDiffusionXLPipeline, StableDiffusionUpscalePipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline, StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLControlNetImg2ImgPipeline, ControlNetModel, AutoencoderKL
+from diffusers import T2IAdapter, MultiAdapter, DPMSolverMultistepScheduler, StableDiffusionXLControlNetPipeline, StableDiffusionXLPipeline, StableDiffusionXLAdapterPipeline, StableDiffusionUpscalePipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline, StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLControlNetImg2ImgPipeline, ControlNetModel, AutoencoderKL
 
 import bpy
 import os
@@ -8,7 +8,7 @@ from PIL import Image, ImageEnhance
 from realesrgan_ncnn_py import Realesrgan
 from . import gpudetector
 
-from .constants import SD_MODELS, CONTROLNET_MODELS
+from .constants import SD_MODELS, CONTROLNET_MODELS, T2I_MODELS
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -75,6 +75,7 @@ class UD_Processor():
     loaded_model_type = None
     loaded_vae = None
     loaded_controlnets = None
+    loaded_t2i = None
 
     ws = None
 
@@ -98,9 +99,13 @@ class UD_Processor():
         
         if 'controlnet_image_slot' in params:
             controlnet_image = []
-            for cn_image in params['controlnet_image_slot']:
-                controlnet_image.append(blender_image_to_pil(cn_image).resize((target_width, target_height)))
+            for image_slot in params['controlnet_image_slot']:
+                controlnet_image.append(blender_image_to_pil(image_slot).resize((target_width, target_height)).convert("RGB"))
 
+        if 't2i_image_slot' in params:
+            t2i_image = []
+            for image_slot in params['t2i_image_slot']:
+                t2i_image.append(blender_image_to_pil(image_slot).resize((target_width, target_height)).convert("RGB"))
 
         overrides={
             'prompt': params['prompt'] + self.prompt_adds,
@@ -128,6 +133,19 @@ class UD_Processor():
                     'control_image': controlnet_image,
                 })
 
+        if 't2i_model' in params:
+            pipeline_type = 'StableDiffusionXLAdapterPipeline'
+            if len(params['t2i_model']) > 1:
+                overrides.update({
+                    'image': t2i_image,
+                    'adapter_conditioning_scale': params['t2i_factor'],
+                })     
+            else:
+                overrides.update({
+                    'image': t2i_image[0],
+                    'adapter_conditioning_scale': params['t2i_factor'][0],
+                })                
+
         else:
             if mask_image and init_image:
                 pipeline_type = 'StableDiffusionXLInpaintPipeline'
@@ -154,6 +172,7 @@ class UD_Processor():
             pipeline_model=params['model'],
             vae_model=self.vae_model,
             controlnet_models=params.get('controlnet_model', []),
+            t2i_models=params.get('t2i_model', []),
             overrides=overrides
         )
 
@@ -263,6 +282,7 @@ class UD_Processor():
             pipeline_model, 
             vae_model = None,
             controlnet_models = [],
+            t2i_models = [],
             overrides = {},
             show_image = True,
             output_type = 'latent',
@@ -285,7 +305,7 @@ class UD_Processor():
                 vae_model = None
 
             # INITIALIZE PIPE IF NEEDED
-            if self.loaded_model != pipeline_model or self.loaded_model_type != pipeline_type or self.loaded_vae != vae_model or self.loaded_controlnets != controlnet_models:
+            if self.loaded_model != pipeline_model or self.loaded_model_type != pipeline_type or self.loaded_vae != vae_model or self.loaded_controlnets != controlnet_models or self.loaded_t2i != t2i_models:
                 
                 self.ws.ud.progress_text = 'Loading pipeline...'
                 model_params = {
@@ -295,7 +315,14 @@ class UD_Processor():
 
                 # LOAD CONTROLNET
                 if controlnet_models:
-                    model_params['controlnet'] = [self.create_controlnet(controlnet) for controlnet in controlnet_models]
+                    model_params['controlnet'] = [self.create_controlnet(model) for model in controlnet_models]
+
+                # LOAD T2I_ADAPTER
+                if t2i_models:
+                    if len(t2i_models) == 1:
+                        model_params['adapter'] = self.create_t2i(t2i_models[0])
+                    else:
+                        model_params['adapter'] = MultiAdapter([self.create_t2i(model) for model in t2i_models])
 
                 # LOAD VAE
                 if vae_model:
@@ -321,6 +348,7 @@ class UD_Processor():
                 self.loaded_model = pipeline_model
                 self.loaded_model_type = pipeline_type
                 self.loaded_controlnets = controlnet_models
+                self.loaded_t2i = t2i_models
                 del model_params
 
             # CALCULATED SETTINGS
@@ -332,12 +360,14 @@ class UD_Processor():
 
             print(self.loaded_model + ' ' + self.loaded_model_type)
 
+            if pipeline_type not in ['StableDiffusionXLAdapterPipeline']:
+                pipe_params['callback_on_step_end'] = self.pipe_callback
+
             # RUN STABLE DIFFUSION
             try:
                 latent_image = self.pipe(
                     **pipe_params,
                     output_type='latent',
-                    callback_on_step_end=self.pipe_callback
                 ).images
             except Exception as e:
                 print(f"UD: Error occurred while running the pipeline:\n\n{e}")
@@ -398,6 +428,19 @@ class UD_Processor():
             
         return model
    
+    def create_t2i(self, t2i_model):
+        model = None
+
+        try:
+            model = T2IAdapter.from_pretrained(t2i_model, torch_dtype=torch.float16, variant="fp16").to("cuda")
+            return model
+        except Exception as e:
+            pass
+
+        if not model:
+            print("Failed to load T2I Adapter!")
+
+        return model
 
     def unload(self):
 
@@ -412,5 +455,6 @@ class UD_Processor():
         self.loaded_model_type = None
         self.loaded_vae = None
         self.loaded_controlnets = None
+        self.loaded_t2i = None
 
         print("GPU cache has been cleared.")

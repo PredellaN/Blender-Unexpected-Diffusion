@@ -79,9 +79,10 @@ class Run_UD(Operator):
         if ws.ud.seed == 0:
             parameters['seed'] = random.randint(1, 99999)
 
-        for item in ws.ud.controlnet_list:
-            if item.controlnet_image_slot and item.controlnet_factor > 0:
-                for entry in ['controlnet_model','controlnet_image_slot','controlnet_factor']:
+        cm = ws.ud.control_mode
+        for item in getattr(ws.ud, f'{cm}_list'):
+            if getattr(item, f'{cm}_image_slot') and getattr(item, f'{cm}_factor') > 0:
+                for entry in [f'{cm}_model',f'{cm}_image_slot',f'{cm}_factor']:
                     if not parameters.get(entry):
                         parameters[entry]=[]
                     parameters[entry].append(getattr(item, entry))
@@ -119,26 +120,36 @@ class Stop_UD(Operator):
         ws.ud.stop_process = 1
         return {'FINISHED'}
     
-class Controlnet_AddItem(Operator):
-    bl_idname = "controlnet.add_item"
+class Control_Mode(Operator):
+    bl_idname = "control.control_mode"
+    bl_label = "Set Control Mode"
+
+    switch_mode: bpy.props.StringProperty()
+
+    def execute(self, context):
+        context.workspace.ud.control_mode = self.switch_mode
+        return {'FINISHED'}
+    
+class Control_AddItem(Operator):
+    bl_idname = "control.add_item"
     bl_label = "Add ControlNet Item"
 
     def execute(self, context):
-        ws = context.workspace  # Replace with your actual data path
-        ws.ud.controlnet_list.add()  # Adjust this line based on how you access your list
-
+        ws = context.workspace
+        control_list = getattr(ws.ud, f'{ws.ud.control_mode}_list')
+        control_list.add()
         return {'FINISHED'}
     
-class Controlnet_RemoveItem(Operator):
-    bl_idname = "controlnet.remove_item"
+class Control_RemoveItem(Operator):
+    bl_idname = "control.remove_item"
     bl_label = "Remove Controlnet"
 
     item_index: bpy.props.IntProperty()  
 
     def execute(self, context):
         ws = context.workspace
-        ws.ud.controlnet_list.remove(self.item_index)
-        
+        control_list = getattr(ws.ud, f'{ws.ud.control_mode}_list')
+        control_list.remove(self.item_index)
         return {'FINISHED'}
     
 class Generate_Map(Operator):
@@ -149,9 +160,9 @@ class Generate_Map(Operator):
 
     def execute(self, context):
         context = bpy.context
-        ws = bpy.context.workspace
+        ws = context.workspace
 
-        for area in bpy.context.screen.areas:
+        for area in context.screen.areas:
             if area.type == 'IMAGE_EDITOR':
                 image_area = area
 
@@ -214,12 +225,14 @@ class Generate_Map(Operator):
         node_setup['file_out'] = tree.nodes.new(type="CompositorNodeViewer")
         tree.nodes.active = node_setup['file_out']
 
+
         if self.mode in ['depth', 'canny']:
             node_setup['normalize'] = tree.nodes.new(type="CompositorNodeNormalize")
             node_setup['invert_node'] = tree.nodes.new(type='CompositorNodeInvert')
 
             links.new(node_setup['layers'].outputs['Depth'], node_setup['normalize'].inputs[0])
             links.new(node_setup['normalize'].outputs[0], node_setup['invert_node'].inputs[1])
+
 
         if self.mode in ['depth']:
             links.new(node_setup['invert_node'].outputs[0], node_setup['file_out'].inputs[0])

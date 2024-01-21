@@ -1,37 +1,21 @@
 import bpy
-from .constants import SD_MODELS, CONTROLNET_MODELS
+from .constants import SD_MODELS, CONTROLNET_MODELS, T2I_MODELS
 
 class ControlNetListItem(bpy.types.PropertyGroup):
     def from_controlnet_models(self, context):
         return [(id, model_info['name'], '') for id, model_info in CONTROLNET_MODELS.items()]
     
-    controlnet_model: bpy.props.EnumProperty(
-        name='',
-        items=from_controlnet_models
-    )
-    controlnet_image_slot: bpy.props.PointerProperty(
-        name='',
-        type=bpy.types.Image
-    )
-    controlnet_factor: bpy.props.FloatProperty(
-        name='',
-        min=0.0, max=5.0, step=0.05, default=0.5
-    )
+    controlnet_model: bpy.props.EnumProperty(name='', items=from_controlnet_models)
+    controlnet_image_slot: bpy.props.PointerProperty(name='', type=bpy.types.Image)
+    controlnet_factor: bpy.props.FloatProperty(name='', min=0.0, max=5.0, step=0.05, default=0.5)
+
+class T2iListItem(bpy.types.PropertyGroup):
+    def from_t2i_models(self, context):
+        return [(id, model_info['name'], '') for id, model_info in T2I_MODELS.items()]
     
-class MY_UL_ControlNetList(bpy.types.UIList):
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        row = layout.row()
-
-        delete_op = row.operator("controlnet.remove_item", text="", icon='X')
-        delete_op.item_index = index
-
-        row.prop(item, "controlnet_model")
-        row.prop(item, "controlnet_image_slot")
-        
-        col = row.column()
-        col.scale_x = 0.6
-        col.prop(item, "controlnet_factor")
-
+    t2i_model: bpy.props.EnumProperty(name='', items=from_t2i_models)
+    t2i_image_slot: bpy.props.PointerProperty(name='', type=bpy.types.Image)
+    t2i_factor: bpy.props.FloatProperty(name='', min=0.0, max=5.0, step=0.05, default=0.5)
 
 class UDPropertyGroup(bpy.types.PropertyGroup):
     model: bpy.props.EnumProperty(items=SD_MODELS, name="Model")
@@ -106,11 +90,16 @@ class UDPropertyGroup(bpy.types.PropertyGroup):
         precision=2,
     )
 
+    control_mode: bpy.props.StringProperty(
+        name='Control Mode',
+        default='controlnet'
+    )
+
     controlnet_list : bpy.props.CollectionProperty(type=ControlNetListItem)
-    controlnet_list_index : bpy.props.IntProperty(
-        name="Search Result",
+    t2i_list : bpy.props.CollectionProperty(type=T2iListItem)
+    control_list_index : bpy.props.IntProperty(
         default=-1,
-        update=lambda self, context: setattr(self, 'controlnet_list_index', -1)
+        update=lambda self, context: setattr(self, 'control_list_index', -1)
     )
 
     running : bpy.props.BoolProperty(name="is running", default=0)

@@ -6,15 +6,21 @@ venv_path = os.path.join(script_dir, 'dependencies')
 sys.path.append(venv_path)
 
 import importlib
+import inspect
 
-from . import panels as pn
 from . import property_groups as pg
 from . import operators as op
+from . import panels as pn
 from . import ud_processor as ud
 
-if "bpy" in locals():
-    for module in [pn,pg,op,ud]:
-        importlib.reload(module)
+classes_to_register = []
+for module in [pg,op,pn]:
+    importlib.reload(module)
+    classes_in_module = [ cls for name, cls in inspect.getmembers(module, inspect.isclass) if cls.__module__ == module.__name__ ]
+    classes_to_register.extend(classes_in_module)
+
+for module in [ud]:
+    importlib.reload(module)
 
 bl_info = {
     "name" : "Blender Unexpected Diffusion",
@@ -26,19 +32,6 @@ bl_info = {
     "warning" : "",
     "category" : "Generic"
 }
-
-classes_to_register = [
-    op.Run_UD,
-    op.Unload_UD,
-    op.Stop_UD,
-    op.Generate_Map,
-    op.Controlnet_AddItem,
-    op.Controlnet_RemoveItem,
-    pg.ControlNetListItem,
-    pg.MY_UL_ControlNetList,
-    pg.UDPropertyGroup,
-    pn.UDPanel,
-]
 
 def register():
     for class_to_register in classes_to_register:
