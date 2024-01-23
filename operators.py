@@ -152,15 +152,46 @@ class Control_RemoveItem(Operator):
         control_list.remove(self.item_index)
         return {'FINISHED'}
     
+class Project_UVs(bpy.types.Operator):
+    bl_idname = "generate.projected_uvs"
+    bl_label = "Project UVs from View"
+
+    def execute(self, context):
+        ws = context.workspace
+
+        if context.active_object.mode != 'EDIT':
+            self.report({'WARNING'}, "Operation requires Edit Mode")
+            return {'CANCELLED'}
+
+        for area in context.screen.areas:
+            if area.type == 'VIEW_3D':
+                for region in area.regions:
+                    if region.type == 'WINDOW':
+                        with context.temp_override(area=area, region=region):
+                            bpy.ops.uv.project_from_view(scale_to_bounds=False) #project
+
+        bpy.ops.uv.select_all(action='SELECT')
+        bpy.ops.transform.resize(
+            value=(1, ws.ud.width / ws.ud.height, 1), orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)))
+
+        return {'FINISHED'}
+
 class Generate_Map(Operator):
     bl_idname = "generate.map"
-    bl_label = "Generate Map"
+    bl_label = ""
 
     mode: bpy.props.StringProperty()
 
     def execute(self, context):
-        context = bpy.context
         ws = context.workspace
+
+        # # Save original status
+        original_selection = context.selected_objects.copy()
+        original_active = context.view_layer.objects.active
+        original_mode = context.object.mode if bpy.context.active_object else None
+    
+        if original_mode:
+            bpy.ops.object.mode_set(mode='OBJECT')
 
         for area in context.screen.areas:
             if area.type == 'IMAGE_EDITOR':
@@ -294,6 +325,7 @@ class Generate_Map(Operator):
 
         image_area.spaces.active.image = bpy.data.images[slot_name]
 
+
         # # Clean up
         bpy.data.objects.remove(temp_camera)
         for key, node in node_setup.items():
@@ -303,5 +335,21 @@ class Generate_Map(Operator):
         for (obj_path, attr) in settings_to_save:
             obj = eval(f"bpy.{obj_path}")
             setattr(obj, attr, saved_settings[obj_path+'.'+attr])
+
+        # Clear current selection
+        for obj in context.selected_objects:
+            obj.select_set(False)
+
+        # Select originally selected objects
+        for obj in original_selection:
+            obj.select_set(True)
+
+        # Set original active object
+        context.view_layer.objects.active = original_active
+
+        # Return to original mode if needed
+        if original_mode and original_active:
+            bpy.ops.object.mode_set(mode=original_mode)
             
+
         return {'FINISHED'}

@@ -103,6 +103,9 @@ class UDPanel(bpy.types.Panel):
         row.label(text="Utilities", icon='TOOL_SETTINGS')
 
         row = layout.row()
+        row.operator("generate.projected_uvs", icon='MOD_UVPROJECT')
+
+        row = layout.row()
         row.operator("generate.map", text="Generate Depth Image from 3D", icon='IMAGE_ZDEPTH').mode='depth'
 
         row = layout.row()
