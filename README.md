@@ -2,7 +2,7 @@
 ![taormina at night(94846)](https://github.com/PredellaN/Blender-Unexpected-Diffusion/assets/75480205/5e0e83c5-1d87-47f7-851c-a714d8913f25)
 
 ## Overview
-Unexpected Diffusion is an addon for Blender that integrates SDXL into the Image Editor panel. The workflow and memory management is optimized to be able to generate very large images with the help of init images, controlnets, and my custom upscaling workflows.
+Unexpected Diffusion is an addon for Blender that integrates SDXL into the Image Editor panel. The workflow and memory management is optimized to be able to generate very large images with the help of init images, controlnets, t2i adapters, and my custom upscaling workflows.
 
 ![tiletest_3x](https://github.com/PredellaN/Blender-Unexpected-Diffusion/assets/75480205/b5af48cf-1792-4074-a01d-d83e68f7970b)
 
