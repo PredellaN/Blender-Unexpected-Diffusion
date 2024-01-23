@@ -133,7 +133,7 @@ class UD_Processor():
                     'control_image': controlnet_image,
                 })
 
-        if 't2i_model' in params:
+        elif 't2i_model' in params:
             pipeline_type = 'StableDiffusionXLAdapterPipeline'
             if len(params['t2i_model']) > 1:
                 overrides.update({
