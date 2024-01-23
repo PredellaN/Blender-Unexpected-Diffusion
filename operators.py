@@ -159,16 +159,22 @@ class Project_UVs(bpy.types.Operator):
     def execute(self, context):
         ws = context.workspace
 
-        if context.active_object.mode != 'EDIT':
-            self.report({'WARNING'}, "Operation requires Edit Mode")
-            return {'CANCELLED'}
-
         for area in context.screen.areas:
             if area.type == 'VIEW_3D':
+                
+                if context.active_object.mode != 'EDIT':
+                    self.report({'WARNING'}, "Operation requires Edit Mode")
+                    return {'CANCELLED'}
+                
                 for region in area.regions:
                     if region.type == 'WINDOW':
                         with context.temp_override(area=area, region=region):
                             bpy.ops.uv.project_from_view(scale_to_bounds=False) #project
+
+                break
+        else:
+            self.report({'WARNING'}, "Operation requires one active 3d View area")
+            return {'CANCELLED'}
 
         bpy.ops.uv.select_all(action='SELECT')
         bpy.ops.transform.resize(
