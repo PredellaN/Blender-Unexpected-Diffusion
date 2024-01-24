@@ -26,7 +26,7 @@ bl_info = {
     "name" : "Blender Unexpected Diffusion",
     "author" : "Nicolas Predella",
     "description" : "",
-    "blender" : (2, 80, 0),
+    "blender" : (4, 0, 0),
     "version" : (0, 0, 1),
     "location" : "",
     "warning" : "",
