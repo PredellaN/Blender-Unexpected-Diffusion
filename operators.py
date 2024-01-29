@@ -187,132 +187,153 @@ class Generate_Map(Operator):
     bl_label = ""
 
     mode: bpy.props.StringProperty()
+    target: bpy.props.StringProperty()
 
     def execute(self, context):
         ws = context.workspace
 
-        # # Save original status
-        original_selection = context.selected_objects.copy()
-        original_active = context.view_layer.objects.active
-        original_mode = context.object.mode if bpy.context.active_object else None
-    
-        if original_mode:
-            bpy.ops.object.mode_set(mode='OBJECT')
-
-        for area in context.screen.areas:
-            if area.type == 'IMAGE_EDITOR':
-                image_area = area
-
-        # Save Settings
-        settings_to_save = [
-            ('context.scene', 'camera'),
-            ('context.scene.render', 'engine'),
-            ('context.view_layer', 'use_pass_z'),
-            ('context.view_layer', 'use_pass_normal'),
-            ('context.scene.eevee', 'taa_render_samples'),
-            ('context.scene.render','resolution_x'),
-            ('context.scene.render','resolution_y'),
-            ('context.scene.render','resolution_percentage'),
-        ]
+        if self.target == '3d':
+            # # Save original status
+            original_selection = context.selected_objects.copy()
+            original_active = context.view_layer.objects.active
+            original_mode = context.object.mode if bpy.context.active_object else None
         
-        saved_settings = {}
-        for (obj_path, attr) in settings_to_save:
-            saved_settings[obj_path+'.'+attr] = getattr(eval(f"bpy.{obj_path}"), attr)
+            if original_mode:
+                bpy.ops.object.mode_set(mode='OBJECT')
 
-        # Create a new camera
-        bpy.ops.object.camera_add()
-        temp_camera = bpy.context.object
+            for area in context.screen.areas:
+                if area.type == 'IMAGE_EDITOR':
+                    image_area = area
 
-        # Align the new camera to the current view
-        for area in bpy.context.screen.areas:
-            if area.type == 'VIEW_3D':
-                rv3d = area.spaces[0].region_3d
-
-                vmat_inv = rv3d.view_matrix.inverted()
-                pmat = rv3d.perspective_matrix @ vmat_inv
-                fov = 2.0*math.atan(1.0/pmat[1][1])
-
-                temp_camera.location = rv3d.view_matrix.inverted().translation
-                temp_camera.rotation_euler = rv3d.view_rotation.to_euler()
-                temp_camera.data.angle = fov
-                context.scene.render.resolution_x = ws.ud.width
-                context.scene.render.resolution_y = ws.ud.height
-                context.scene.render.resolution_percentage = ws.ud.scale
-                break
-
-        # Set the new settings
-        context.scene.camera = temp_camera
-        context.scene.render.engine = 'BLENDER_EEVEE'
-        context.view_layer.use_pass_z = True
-        context.view_layer.use_pass_normal = True
-        context.scene.eevee.taa_render_samples = 1
-
-        # # Setup Compositor
-        # Create input render layer node
-        context.scene.use_nodes = True
-        tree = context.scene.node_tree
-        links = tree.links
-        node_setup = {}
-
-        # Create Render Layer node
-        node_setup['layers'] = tree.nodes.new('CompositorNodeRLayers')
-        node_setup['layers'].layer = context.window.view_layer.name
-
-        # Create File Output node
-        node_setup['file_out'] = tree.nodes.new(type="CompositorNodeViewer")
-        tree.nodes.active = node_setup['file_out']
-
-
-        if self.mode in ['depth', 'canny']:
-            node_setup['normalize'] = tree.nodes.new(type="CompositorNodeNormalize")
-            node_setup['invert_node'] = tree.nodes.new(type='CompositorNodeInvert')
-
-            links.new(node_setup['layers'].outputs['Depth'], node_setup['normalize'].inputs[0])
-            links.new(node_setup['normalize'].outputs[0], node_setup['invert_node'].inputs[1])
-
-
-        if self.mode in ['depth']:
-            links.new(node_setup['invert_node'].outputs[0], node_setup['file_out'].inputs[0])
-
-        elif self.mode in ['canny']:
-            node_setup['separatexyz'] = tree.nodes.new(type="CompositorNodeSeparateXYZ")
-            node_setup['combinexyz'] = tree.nodes.new(type="CompositorNodeCombineXYZ")
-
-            links.new(node_setup['layers'].outputs['Normal'], node_setup['separatexyz'].inputs[0])
+            # Save Settings
+            settings_to_save = [
+                ('context.scene', 'camera'),
+                ('context.scene.render', 'engine'),
+                ('context.view_layer', 'use_pass_z'),
+                ('context.view_layer', 'use_pass_normal'),
+                ('context.scene.eevee', 'taa_render_samples'),
+                ('context.scene.render','resolution_x'),
+                ('context.scene.render','resolution_y'),
+                ('context.scene.render','resolution_percentage'),
+            ]
             
-            for key, axis in enumerate(['x', 'y', 'z']):
-                node_setup[f'sum_{axis}'] = tree.nodes.new(type="CompositorNodeMath")
-                node_setup[f'sum_{axis}'].operation = 'ADD'
-                node_setup[f'sum_{axis}'].inputs[1].default_value = 1
+            saved_settings = {}
+            for (obj_path, attr) in settings_to_save:
+                saved_settings[obj_path+'.'+attr] = getattr(eval(f"bpy.{obj_path}"), attr)
 
-                node_setup[f'divide_{axis}'] = tree.nodes.new(type="CompositorNodeMath")
-                node_setup[f'divide_{axis}'].operation = 'DIVIDE'
-                node_setup[f'divide_{axis}'].inputs[1].default_value = 2
+            # Create a new camera
+            bpy.ops.object.camera_add()
+            temp_camera = bpy.context.object
 
-                links.new(node_setup['separatexyz'].outputs[key], node_setup[f'sum_{axis}'].inputs[0])
-                links.new(node_setup[f'sum_{axis}'].outputs[0], node_setup[f'divide_{axis}'].inputs[0])
-                links.new(node_setup[f'divide_{axis}'].outputs[0], node_setup['combinexyz'].inputs[key])
+            # Align the new camera to the current view
+            for area in bpy.context.screen.areas:
+                if area.type == 'VIEW_3D':
+                    rv3d = area.spaces[0].region_3d
 
-            node_setup['separate_color'] = tree.nodes.new(type="CompositorNodeSeparateColor")
-            node_setup['separate_color'].mode = 'HSV'
-            links.new(node_setup['combinexyz'].outputs[0], node_setup['separate_color'].inputs[0])
+                    vmat_inv = rv3d.view_matrix.inverted()
+                    pmat = rv3d.perspective_matrix @ vmat_inv
+                    fov = 2.0*math.atan(1.0/pmat[1][1])
 
-            node_setup['combine_color'] = tree.nodes.new(type="CompositorNodeCombineColor")
-            node_setup['combine_color'].mode = 'HSV'
-            links.new(node_setup['separate_color'].outputs[0], node_setup['combine_color'].inputs[0])
-            links.new(node_setup['separate_color'].outputs[1], node_setup['combine_color'].inputs[1])
-            links.new(node_setup['invert_node'].outputs[0], node_setup['combine_color'].inputs[2])
+                    temp_camera.location = rv3d.view_matrix.inverted().translation
+                    temp_camera.rotation_euler = rv3d.view_rotation.to_euler()
+                    temp_camera.data.angle = fov
+                    context.scene.render.resolution_x = ws.ud.width
+                    context.scene.render.resolution_y = ws.ud.height
+                    context.scene.render.resolution_percentage = ws.ud.scale
+                    break
 
-            links.new(node_setup['combine_color'].outputs[0], node_setup['file_out'].inputs[0])
+            # Set the new settings
+            context.scene.camera = temp_camera
+            context.scene.render.engine = 'BLENDER_EEVEE'
+            context.view_layer.use_pass_z = True
+            context.view_layer.use_pass_normal = True
+            context.scene.eevee.taa_render_samples = 1
 
-        # # Render the scene
-        bpy.ops.render.render(layer="ViewLayer", write_still=True)
+            # # Setup Compositor
+            # Create input render layer node
+            context.scene.use_nodes = True
+            tree = context.scene.node_tree
+            links = tree.links
+            node_setup = {}
 
-        # # Save image
-        image = bpy.data.images['Viewer Node']
-        temp_filepath = temp_image_filepath
-        image.save_render(filepath=temp_filepath)
+            # Create Render Layer node
+            node_setup['layers'] = tree.nodes.new('CompositorNodeRLayers')
+            node_setup['layers'].layer = context.window.view_layer.name
+
+            # Create File Output node
+            node_setup['file_out'] = tree.nodes.new(type="CompositorNodeViewer")
+            tree.nodes.active = node_setup['file_out']
+
+
+            if self.mode in ['depth', 'canny']:
+                node_setup['normalize'] = tree.nodes.new(type="CompositorNodeNormalize")
+                node_setup['invert_node'] = tree.nodes.new(type='CompositorNodeInvert')
+
+                links.new(node_setup['layers'].outputs['Depth'], node_setup['normalize'].inputs[0])
+                links.new(node_setup['normalize'].outputs[0], node_setup['invert_node'].inputs[1])
+
+
+            if self.mode in ['depth']:
+                links.new(node_setup['invert_node'].outputs[0], node_setup['file_out'].inputs[0])
+
+            elif self.mode in ['canny']:
+                node_setup['separatexyz'] = tree.nodes.new(type="CompositorNodeSeparateXYZ")
+                node_setup['combinexyz'] = tree.nodes.new(type="CompositorNodeCombineXYZ")
+
+                links.new(node_setup['layers'].outputs['Normal'], node_setup['separatexyz'].inputs[0])
+                
+                for key, axis in enumerate(['x', 'y', 'z']):
+                    node_setup[f'sum_{axis}'] = tree.nodes.new(type="CompositorNodeMath")
+                    node_setup[f'sum_{axis}'].operation = 'ADD'
+                    node_setup[f'sum_{axis}'].inputs[1].default_value = 1
+
+                    node_setup[f'divide_{axis}'] = tree.nodes.new(type="CompositorNodeMath")
+                    node_setup[f'divide_{axis}'].operation = 'DIVIDE'
+                    node_setup[f'divide_{axis}'].inputs[1].default_value = 2
+
+                    links.new(node_setup['separatexyz'].outputs[key], node_setup[f'sum_{axis}'].inputs[0])
+                    links.new(node_setup[f'sum_{axis}'].outputs[0], node_setup[f'divide_{axis}'].inputs[0])
+                    links.new(node_setup[f'divide_{axis}'].outputs[0], node_setup['combinexyz'].inputs[key])
+
+                node_setup['separate_color'] = tree.nodes.new(type="CompositorNodeSeparateColor")
+                node_setup['separate_color'].mode = 'HSV'
+                links.new(node_setup['combinexyz'].outputs[0], node_setup['separate_color'].inputs[0])
+
+                node_setup['combine_color'] = tree.nodes.new(type="CompositorNodeCombineColor")
+                node_setup['combine_color'].mode = 'HSV'
+                links.new(node_setup['separate_color'].outputs[0], node_setup['combine_color'].inputs[0])
+                links.new(node_setup['separate_color'].outputs[1], node_setup['combine_color'].inputs[1])
+                links.new(node_setup['invert_node'].outputs[0], node_setup['combine_color'].inputs[2])
+
+                links.new(node_setup['combine_color'].outputs[0], node_setup['file_out'].inputs[0])
+
+            # # Render the scene
+            bpy.ops.render.render(layer="ViewLayer", write_still=True)
+
+            # # Save image
+            image = bpy.data.images['Viewer Node']
+            temp_filepath = temp_image_filepath
+            image.save_render(filepath=temp_filepath)
+
+        elif self.target == 'image':
+            areas = bpy.context.screen.areas
+            for area in areas:
+                if area.type == 'IMAGE_EDITOR':
+                    image_area = area
+                    break
         
+        if not image_area:
+            self.report({'WARNING'}, "No image is open")
+            return {'CANCELLED'}
+            
+        space = area.spaces.active
+
+        if space.image is None:
+            self.report({'WARNING'}, "No image is open")
+            return {'CANCELLED'}
+        
+        bpy.data.images[space.image.name].save_render(temp_image_filepath)
+
         # Out-of-blender processing
         if self.mode in ['canny']:
             image = cv2.imread(temp_image_filepath)
@@ -333,29 +354,30 @@ class Generate_Map(Operator):
 
 
         # # Clean up
-        bpy.data.objects.remove(temp_camera)
-        for key, node in node_setup.items():
-            tree.nodes.remove(node)
+        if self.target == '3d':
+            bpy.data.objects.remove(temp_camera)
+            for key, node in node_setup.items():
+                tree.nodes.remove(node)
 
-        # Restore Settings
-        for (obj_path, attr) in settings_to_save:
-            obj = eval(f"bpy.{obj_path}")
-            setattr(obj, attr, saved_settings[obj_path+'.'+attr])
+            # Restore Settings
+            for (obj_path, attr) in settings_to_save:
+                obj = eval(f"bpy.{obj_path}")
+                setattr(obj, attr, saved_settings[obj_path+'.'+attr])
 
-        # Clear current selection
-        for obj in context.selected_objects:
-            obj.select_set(False)
+            # Clear current selection
+            for obj in context.selected_objects:
+                obj.select_set(False)
 
-        # Select originally selected objects
-        for obj in original_selection:
-            obj.select_set(True)
+            # Select originally selected objects
+            for obj in original_selection:
+                obj.select_set(True)
 
-        # Set original active object
-        context.view_layer.objects.active = original_active
+            # Set original active object
+            context.view_layer.objects.active = original_active
 
-        # Return to original mode if needed
-        if original_mode and original_active:
-            bpy.ops.object.mode_set(mode=original_mode)
+            # Return to original mode if needed
+            if original_mode and original_active:
+                bpy.ops.object.mode_set(mode=original_mode)
             
 
         return {'FINISHED'}

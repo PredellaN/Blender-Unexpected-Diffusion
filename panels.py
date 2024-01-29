@@ -106,7 +106,15 @@ class UDPanel(bpy.types.Panel):
         row.operator("generate.projected_uvs", icon='MOD_UVPROJECT')
 
         row = layout.row()
-        row.operator("generate.map", text="Generate Depth Image from 3D", icon='IMAGE_ZDEPTH').mode='depth'
+        depth_operator_3d = row.operator("generate.map", text="Depth from 3D", icon='IMAGE_ZDEPTH')
+        depth_operator_3d.mode='depth'
+        depth_operator_3d.target='3d'
 
         row = layout.row()
-        row.operator("generate.map", text="Generate Canny Edge Image from 3D", icon='IMAGE_ZDEPTH').mode='canny'
+        canny_operator_3d = row.operator("generate.map", text="Canny Edge from 3D", icon='IMAGE_ZDEPTH')
+        canny_operator_3d.mode='canny'
+        canny_operator_3d.target='3d'
+
+        canny_operator_image = row.operator("generate.map", text="Canny Edge from Image", icon='IMAGE_ZDEPTH')
+        canny_operator_image.mode='canny'
+        canny_operator_image.target='image'
