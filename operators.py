@@ -322,17 +322,17 @@ class Generate_Map(Operator):
                     image_area = area
                     break
         
-        if not image_area:
-            self.report({'WARNING'}, "No image is open")
-            return {'CANCELLED'}
-            
-        space = area.spaces.active
+            if not image_area:
+                self.report({'WARNING'}, "No image is open")
+                return {'CANCELLED'}
+                
+            space = area.spaces.active
 
-        if space.image is None:
-            self.report({'WARNING'}, "No image is open")
-            return {'CANCELLED'}
-        
-        bpy.data.images[space.image.name].save_render(temp_image_filepath)
+            if space.image is None:
+                self.report({'WARNING'}, "No image is open")
+                return {'CANCELLED'}
+            
+            bpy.data.images[space.image.name].save_render(temp_image_filepath)
 
         # Out-of-blender processing
         if self.mode in ['canny']:
