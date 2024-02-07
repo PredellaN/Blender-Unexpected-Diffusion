@@ -111,10 +111,11 @@ class UDPanel(bpy.types.Panel):
         depth_operator_3d.target='3d'
 
         row = layout.row()
-        canny_operator_3d = row.operator("generate.map", text="Canny Edge from 3D", icon='IMAGE_ZDEPTH')
+        canny_operator_3d = row.operator("generate.map", text="Canny from 3D", icon='IMAGE_ZDEPTH')
         canny_operator_3d.mode='canny'
         canny_operator_3d.target='3d'
 
-        canny_operator_image = row.operator("generate.map", text="Canny Edge from Image", icon='IMAGE_ZDEPTH')
+        canny_operator_image = row.operator("generate.map", text="Canny from Image", icon='IMAGE_ZDEPTH')
         canny_operator_image.mode='canny'
         canny_operator_image.target='image'
+        row.prop(ws.ud, "canny_strength", text="Strength")

@@ -89,7 +89,6 @@ class UDPropertyGroup(bpy.types.PropertyGroup):
         min=0,
         precision=2,
     )
-
     control_mode: bpy.props.StringProperty(
         name='Control Mode',
         default='controlnet'
@@ -106,3 +105,12 @@ class UDPropertyGroup(bpy.types.PropertyGroup):
     progress : bpy.props.IntProperty(name="", min=0, max=100, default=0)
     progress_text : bpy.props.StringProperty(name="")
     stop_process: bpy.props.BoolProperty(name="stop", default=0)
+
+    ## Utilities
+    canny_strength: bpy.props.FloatProperty(
+        name='Canny Strength',
+        max=1,
+        default=0.5,
+        min=0,
+        precision=2,
+    )
