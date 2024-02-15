@@ -492,7 +492,7 @@ class UD_Processor():
 
         return callback_kwargs
     
-    def determine_pipeline_type(params, init_image, mask_image):
+    def determine_pipeline_type(self, params, init_image, mask_image):
         if 'controlnet_model' in params:
             if mask_image and init_image:
                 return 'StableDiffusionXLControlNetInpaintPipeline'
