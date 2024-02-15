@@ -1,9 +1,11 @@
-from diffusers import T2IAdapter, MultiAdapter, DPMSolverMultistepScheduler, StableDiffusionXLControlNetPipeline, StableDiffusionXLPipeline, StableDiffusionXLAdapterPipeline, StableDiffusionUpscalePipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline, StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLControlNetImg2ImgPipeline, ControlNetModel, AutoencoderKL
+from diffusers import T2IAdapter, MultiAdapter, DPMSolverMultistepScheduler, StableCascadeCombinedPipeline, StableCascadePriorPipeline, StableCascadeDecoderPipeline, StableDiffusionXLControlNetPipeline, StableDiffusionXLPipeline, StableDiffusionXLAdapterPipeline, StableDiffusionUpscalePipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline, StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLControlNetImg2ImgPipeline, ControlNetModel, AutoencoderKL
+from diffusers.pipelines.stable_cascade.modeling_stable_cascade_common import StableCascadeUnet
 
 import bpy
 import os
 import numpy as np
 import torch
+from PIL import Image
 from PIL import Image, ImageEnhance
 from realesrgan_ncnn_py import Realesrgan
 from . import gpudetector
@@ -36,8 +38,6 @@ def blender_image_to_pil(blender_image):
 
     # Create and return a PIL image
     return Image.fromarray(pixels, 'RGBA')
-
-from PIL import Image
 
 def create_alpha_mask(image):
 
@@ -96,17 +96,15 @@ class UD_Processor():
                     mask_image = None
             else:
                 mask_image = None
+
+        pipeline_type = self.determine_pipeline_type(params, init_image, mask_image)
         
         if 'controlnet_image_slot' in params:
-            controlnet_image = []
-            for image_slot in params['controlnet_image_slot']:
-                controlnet_image.append(blender_image_to_pil(image_slot).resize((target_width, target_height)).convert("RGB"))
+            controlnet_image = [blender_image_to_pil(slot).resize((target_width, target_height)).convert("RGB") for slot in params['controlnet_image_slot']]
 
         if 't2i_image_slot' in params:
-            t2i_image = []
-            for image_slot in params['t2i_image_slot']:
-                t2i_image.append(blender_image_to_pil(image_slot).resize((target_width, target_height)).convert("RGB"))
-
+            t2i_image = [blender_image_to_pil(slot).resize((target_width, target_height)).convert("RGB") for slot in params['t2i_image_slot']]
+            
         overrides={
             'prompt': params['prompt'] + self.prompt_adds,
             'negative_prompt': params['negative_prompt'] + self.negative_prompt_adds,
@@ -118,10 +116,6 @@ class UD_Processor():
         params['steps_multiplier'] = 0.1 if 'turbo' in params['model'] else 1
 
         if 'controlnet_model' in params:
-            if mask_image and init_image:
-                pipeline_type = 'StableDiffusionXLControlNetInpaintPipeline'
-            else:
-                pipeline_type = 'StableDiffusionXLControlNetImg2ImgPipeline' if init_image else 'StableDiffusionXLControlNetPipeline'
             overrides.update({
                 'image': init_image if init_image else controlnet_image,
                 'controlnet_conditioning_scale': params['controlnet_factor'],
@@ -134,7 +128,6 @@ class UD_Processor():
                 })
 
         elif 't2i_model' in params:
-            pipeline_type = 'StableDiffusionXLAdapterPipeline'
             if len(params['t2i_model']) > 1:
                 overrides.update({
                     'image': t2i_image,
@@ -147,10 +140,6 @@ class UD_Processor():
                 })                
 
         else:
-            if mask_image and init_image:
-                pipeline_type = 'StableDiffusionXLInpaintPipeline'
-            else:
-                pipeline_type = 'StableDiffusionXLImg2ImgPipeline' if init_image else 'StableDiffusionXLPipeline'
             overrides.update({
                 'denoising_end': params['high_noise_frac']
                 })
@@ -166,7 +155,13 @@ class UD_Processor():
                 'mask_image': mask_image,
             })
 
-        latent_image = self.run_pipeline(
+        # if params['model'] in ['stabilityai/stable-cascade']:
+        #     decoded_image = self.run_cascade_pipeline(
+        #         params=params,
+        #     )
+        #     return decoded_image
+        # else:
+        latent_image = self.run_sdxl_pipeline(
             params=params,
             pipeline_type=pipeline_type,
             pipeline_model=params['model'],
@@ -192,7 +187,7 @@ class UD_Processor():
                 else:
                     overrides['num_inference_steps'] =  round_to_nearest(params['inference_steps'] / params['refiner_strength'])
 
-                decoded_image = self.run_pipeline(
+                decoded_image = self.run_sdxl_pipeline(
                     params=params,
                     pipeline_type='StableDiffusionXLImg2ImgPipeline',
                     pipeline_model=self.refiner_model,
@@ -264,7 +259,7 @@ class UD_Processor():
             }
 
         for model in [params['model']]:
-            decoded_image = self.run_pipeline(
+            decoded_image = self.run_sdxl_pipeline(
                 params=params,
                 pipeline_type='StableDiffusionXLImg2ImgPipeline',
                 pipeline_model=model,
@@ -274,8 +269,104 @@ class UD_Processor():
             )
         return decoded_image
 
+    def run_cascade_pipeline(
+            self,
+            params,
+            overrides = {},
+            show_image = True,
+    ):
+        
+        self.ws.ud.progress = 0
 
-    def run_pipeline(
+        with torch.no_grad(): 
+
+            # PRIOR PARAMS
+            prior_params = {
+                'prompt': params['prompt'],
+                'negative_prompt': params['negative_prompt'],
+                'num_inference_steps': params['inference_steps'],
+                'guidance_scale': params['cfg_scale'],
+                'height': params['height'],
+                'width': params['width'],
+                'num_images_per_prompt': 1,
+            }
+            # CALCULATED SETTINGS
+            prior_params['num_inference_steps'] = int(params['inference_steps'] * params['steps_multiplier'])
+
+            # DECODER PARAMS
+            decoder_params = {
+                'prompt': params['prompt'],
+                'negative_prompt': params['negative_prompt'],
+                'guidance_scale': 0.0,
+                'output_type': "pil",
+                'num_inference_steps': 10,
+            }
+            
+            prior_type = 'StableCascadeCombinedPipeline'
+            prior_model = 'stabilityai/stable-cascade-prior'
+            decoder_type = 'StableCascadeDecoderPipeline'
+            decoder_model = 'stabilityai/stable-cascade'
+  
+            self.ws.ud.progress_text = 'Loading pipeline...'
+            prior_model_params = {
+                'torch_dtype': torch.bfloat16,
+                'add_watermarker': False,
+            }
+            decoder_model_params = {
+                'torch_dtype': torch.float16,
+                'add_watermarker': False,
+            }
+
+            # LOAD PRIOR
+            try:
+                unet = StableCascadeUnet.from_pretrained(prior_model, torch_dtype=torch.float16, subfolder="unet", in_channels=64, low_cpu_mem_usage=False, ignore_mismatched_sizes=True)
+                self.pipe = globals()[prior_type].from_pretrained(decoder_model, unet=unet, **prior_model_params)
+                self.pipe.to("cuda")
+
+            except Exception as e:
+                print(f"UD: Error occurred in loading the pipeline:\n\n{e}")
+                self.unload()
+                return None
+
+            # RUN PRIOR
+            try:
+                prior_output = self.pipe(
+                    **prior_params,
+                ).images
+            except Exception as e:
+                print(f"UD: Error occurred while running the pipeline:\n\n{e}")
+                self.unload()
+                return None
+            
+            self.unload()
+            
+            # LOAD DECODER
+            # try:
+            #     self.pipe = StableCascadeDecoderPipeline.from_pretrained("stabilityai/stable-cascade",  torch_dtype=torch.float16)
+            #     # self.pipe = globals()[decoder_type].from_pretrained(decoder_model, **decoder_model_params)
+            #     self.pipe.to("cuda")
+
+            # except Exception as e:
+            #     print(f"UD: Error occurred in loading the pipeline:\n\n{e}")
+            #     self.unload()
+            #     return None
+            
+            # # RUN DECODER
+            # try:
+            #     decoder_output = self.pipe(
+            #         image_embeddings=prior_output.image_embeddings.half(),
+            #         **decoder_params,
+            #     ).images
+
+            # except Exception as e:
+            #     print(f"UD: Error occurred while running the pipeline:\n\n{e}")
+            #     self.unload()
+            #     return None
+
+            # RETURN IMAGE
+            return prior_output[0]  
+
+    def run_sdxl_pipeline(
             self,
             params,
             pipeline_type,
@@ -400,6 +491,18 @@ class UD_Processor():
                 area.tag_redraw()
 
         return callback_kwargs
+    
+    def determine_pipeline_type(params, init_image, mask_image):
+        if 'controlnet_model' in params:
+            if mask_image and init_image:
+                return 'StableDiffusionXLControlNetInpaintPipeline'
+            return 'StableDiffusionXLControlNetImg2ImgPipeline' if init_image else 'StableDiffusionXLControlNetPipeline'
+        elif 't2i_model' in params:
+            return 'StableDiffusionXLAdapterPipeline'
+        else:
+            if mask_image and init_image:
+                return 'StableDiffusionXLInpaintPipeline'
+            return 'StableDiffusionXLImg2ImgPipeline' if init_image else 'StableDiffusionXLPipeline'
         
     def create_controlnet(self, controlnet_model):
         model = None

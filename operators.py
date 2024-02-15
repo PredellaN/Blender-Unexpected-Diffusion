@@ -19,7 +19,7 @@ class Run_UD(Operator):
     bl_idname = "image.run_ud"
     bl_label = "Run Unexpected Diffusion"
 
-    mode: bpy.props.StringProperty()
+    mode: bpy.props.StringProperty() # type: ignore
 
     def ud_task(self, parameters, image_area, ws):
 
@@ -124,7 +124,7 @@ class Control_Mode(Operator):
     bl_idname = "control.control_mode"
     bl_label = "Set Control Mode"
 
-    switch_mode: bpy.props.StringProperty()
+    switch_mode: bpy.props.StringProperty() # type: ignore
 
     def execute(self, context):
         context.workspace.ud.control_mode = self.switch_mode
@@ -144,7 +144,7 @@ class Control_RemoveItem(Operator):
     bl_idname = "control.remove_item"
     bl_label = "Remove Controlnet"
 
-    item_index: bpy.props.IntProperty()  
+    item_index: bpy.props.IntProperty() # type: ignore
 
     def execute(self, context):
         ws = context.workspace
@@ -186,8 +186,8 @@ class Generate_Map(Operator):
     bl_idname = "generate.map"
     bl_label = ""
 
-    mode: bpy.props.StringProperty()
-    target: bpy.props.StringProperty()
+    mode: bpy.props.StringProperty() # type: ignore
+    target: bpy.props.StringProperty() # type: ignore
 
     def execute(self, context):
         ws = context.workspace
