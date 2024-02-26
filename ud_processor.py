@@ -82,8 +82,8 @@ class UD_Processor():
     def run(self, ws, params):
         self.ws = ws
 
-        target_width = round((params['width'] * params['scale'] / 100) / 8) * 8
-        target_height = round((params['height'] * params['scale'] / 100) / 8) * 8
+        target_width = round((params['width'] * params['scale'] / 100) / 16) * 16
+        target_height = round((params['height'] * params['scale'] / 100) / 16) * 16
 
         init_image = blender_image_to_pil(params['init_image_slot']).resize((target_width, target_height)) if params.get('init_image_slot') else None
 
@@ -209,8 +209,8 @@ class UD_Processor():
 
         image = Image.open(params['temp_image_filepath'])
 
-        current_width = round_to_nearest(params['width']/8)*8
-        current_height = round_to_nearest(params['height']/8)*8
+        current_width = round_to_nearest(params['width']/16)*16
+        current_height = round_to_nearest(params['height']/16)*16
         
         params['steps_multiplier'] = 0.5 if 'turbo' in params['model'] else 1
 
