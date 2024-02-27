@@ -46,10 +46,9 @@ Contributions are welcome, if you'd like to help improve Unexpected Diffusion, p
 This project is licensed under GPLv3
 
 ## TODO
-- stable cascade
+- stable diffusion 3 as soon as available and sufficiently documented
 - StableDiffusionXLInstantIDPipeline ( https://huggingface.co/InstantX/InstantID )
 - easier inpainting
-- utility to generate also segmentation map
 - seamless generation
 - batch generation
 - low memory warnings (using gpudetector info and heuristics)
