@@ -7,6 +7,7 @@ SD_MODELS = [
     ('Lykon/dreamshaper-xl-1-0','Dreamshaper XL 1.0',''),
     ('stablediffusionapi/juggernaut-xl-v7','Juggernaut XL v7',''),
     ('playgroundai/playground-v2-1024px-aesthetic','Playground V2 Aesthetic', ""),
+    ('Vargol/sdxl-lightning-4-steps','SDXL-Lightning', ""),
     # ('stabilityai/stable-cascade','Stable Cascade', ""),
 ]
 
