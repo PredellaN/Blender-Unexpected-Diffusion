@@ -9,7 +9,6 @@ SD_MODELS = [
     ('playgroundai/playground-v2-1024px-aesthetic','Playground V2 Aesthetic', ""),
     ('playgroundai/playground-v2.5-1024px-aesthetic','Playground V2.5 Aesthetic', ""),
     ('Vargol/sdxl-lightning-4-steps','SDXL-Lightning', ""),
-    # ('stabilityai/stable-cascade','Stable Cascade', ""),
 ]
 
 CONTROLNET_MODELS = {
