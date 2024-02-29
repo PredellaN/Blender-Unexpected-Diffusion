@@ -1,6 +1,5 @@
-from diffusers import T2IAdapter, MultiAdapter, DPMSolverMultistepScheduler, StableCascadeCombinedPipeline, StableCascadePriorPipeline, StableCascadeDecoderPipeline, StableDiffusionXLControlNetPipeline, StableDiffusionXLPipeline, StableDiffusionXLAdapterPipeline, StableDiffusionUpscalePipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline, StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLControlNetImg2ImgPipeline, ControlNetModel, AutoencoderKL
-from diffusers.pipelines.stable_cascade.modeling_stable_cascade_common import StableCascadeUnet
-
+from diffusers import T2IAdapter, MultiAdapter, DPMSolverMultistepScheduler, StableDiffusionXLControlNetPipeline, DiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionXLAdapterPipeline, StableDiffusionUpscalePipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline, StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLControlNetImg2ImgPipeline, ControlNetModel, AutoencoderKL
+from diffusers import EDMDPMSolverMultistepScheduler
 import bpy
 import os
 import numpy as np
@@ -155,29 +154,28 @@ class UD_Processor():
                 'mask_image': mask_image,
             })
 
-        # if params['model'] in ['stabilityai/stable-cascade']:
-        #     decoded_image = self.run_cascade_pipeline(
-        #         params=params,
-        #     )
-        #     return decoded_image
-        # else:
-        latent_image = self.run_sdxl_pipeline(
+        output_type = 'pil' if params['high_noise_frac'] == 1 else 'latent'
+
+        image = self.run_sdxl_pipeline(
             params=params,
             pipeline_type=pipeline_type,
             pipeline_model=params['model'],
             vae_model=self.vae_model,
             controlnet_models=params.get('controlnet_model', []),
             t2i_models=params.get('t2i_model', []),
-            overrides=overrides
+            overrides=overrides,
+            output_type=output_type,
         )
+        if image is not None:
+            if output_type =='pil':
+                return image
 
-        if latent_image is not None:
-            if params['high_noise_frac'] < 1:
-            # Start Refining
+            elif output_type=='latent':
+                # Start Refining
                 overrides = {
                     'prompt': params['prompt'] + self.prompt_adds,
                     'negative_prompt': params['negative_prompt'] + ' hdr ' + self.negative_prompt_adds,
-                    'image': latent_image,
+                    'image': image,
                     'strength': params['refiner_strength'],
                 }
 
@@ -195,12 +193,9 @@ class UD_Processor():
                     overrides=overrides,
                     output_type='pil'
                 )
-            else:
-                with torch.no_grad():
-                    image = self.pipe.vae.decode(latent_image / self.pipe.vae.config.scaling_factor, return_dict=False)[0]
-                    decoded_image = self.pipe.image_processor.postprocess(image, output_type="pil")[0]
+
+                return decoded_image
             
-            return decoded_image
         else:
             return None
 
@@ -269,103 +264,6 @@ class UD_Processor():
             )
         return decoded_image
 
-    def run_cascade_pipeline(
-            self,
-            params,
-            overrides = {},
-            show_image = True,
-    ):
-        
-        self.ws.ud.progress = 0
-
-        with torch.no_grad(): 
-
-            # PRIOR PARAMS
-            prior_params = {
-                'prompt': params['prompt'],
-                'negative_prompt': params['negative_prompt'],
-                'num_inference_steps': params['inference_steps'],
-                'guidance_scale': params['cfg_scale'],
-                'height': params['height'],
-                'width': params['width'],
-                'num_images_per_prompt': 1,
-            }
-            # CALCULATED SETTINGS
-            prior_params['num_inference_steps'] = int(params['inference_steps'] * params['steps_multiplier'])
-
-            # DECODER PARAMS
-            decoder_params = {
-                'prompt': params['prompt'],
-                'negative_prompt': params['negative_prompt'],
-                'guidance_scale': 0.0,
-                'output_type': "pil",
-                'num_inference_steps': 10,
-            }
-            
-            prior_type = 'StableCascadeCombinedPipeline'
-            prior_model = 'stabilityai/stable-cascade-prior'
-            decoder_type = 'StableCascadeDecoderPipeline'
-            decoder_model = 'stabilityai/stable-cascade'
-  
-            self.ws.ud.progress_text = 'Loading pipeline...'
-            prior_model_params = {
-                'torch_dtype': torch.bfloat16,
-                'add_watermarker': False,
-            }
-            decoder_model_params = {
-                'torch_dtype': torch.float16,
-                'add_watermarker': False,
-            }
-
-            # LOAD PRIOR
-            try:
-                unet = StableCascadeUnet.from_pretrained(prior_model, torch_dtype=torch.float16, subfolder="unet", in_channels=64, low_cpu_mem_usage=False, ignore_mismatched_sizes=True)
-                self.pipe = globals()[prior_type].from_pretrained(decoder_model, unet=unet, **prior_model_params)
-                self.pipe.to("cuda")
-
-            except Exception as e:
-                print(f"UD: Error occurred in loading the pipeline:\n\n{e}")
-                self.unload()
-                return None
-
-            # RUN PRIOR
-            try:
-                prior_output = self.pipe(
-                    **prior_params,
-                ).images
-            except Exception as e:
-                print(f"UD: Error occurred while running the pipeline:\n\n{e}")
-                self.unload()
-                return None
-            
-            self.unload()
-            
-            # LOAD DECODER
-            # try:
-            #     self.pipe = StableCascadeDecoderPipeline.from_pretrained("stabilityai/stable-cascade",  torch_dtype=torch.float16)
-            #     # self.pipe = globals()[decoder_type].from_pretrained(decoder_model, **decoder_model_params)
-            #     self.pipe.to("cuda")
-
-            # except Exception as e:
-            #     print(f"UD: Error occurred in loading the pipeline:\n\n{e}")
-            #     self.unload()
-            #     return None
-            
-            # # RUN DECODER
-            # try:
-            #     decoder_output = self.pipe(
-            #         image_embeddings=prior_output.image_embeddings.half(),
-            #         **decoder_params,
-            #     ).images
-
-            # except Exception as e:
-            #     print(f"UD: Error occurred while running the pipeline:\n\n{e}")
-            #     self.unload()
-            #     return None
-
-            # RETURN IMAGE
-            return prior_output[0]  
-
     def run_sdxl_pipeline(
             self,
             params,
@@ -392,7 +290,7 @@ class UD_Processor():
             pipe_params.update(overrides)
 
             # CHANGES FOR SPECIFIC MODELS
-            if pipeline_model in ['stablediffusionapi/NightVision_XL']:
+            if pipeline_model not in ['stabilityai/stable-diffusion-xl-base-1.0']:
                 vae_model = None
 
             # INITIALIZE PIPE IF NEEDED
@@ -454,27 +352,36 @@ class UD_Processor():
             if pipeline_type not in ['StableDiffusionXLAdapterPipeline']:
                 pipe_params['callback_on_step_end'] = self.pipe_callback
 
+            if pipeline_model in ['playgroundai/playground-v2.5-1024px-aesthetic']:
+                self.pipe.scheduler = EDMDPMSolverMultistepScheduler()
+
             # RUN STABLE DIFFUSION
-            try:
-                latent_image = self.pipe(
-                    **pipe_params,
-                    output_type='latent',
-                ).images
-            except Exception as e:
-                print(f"UD: Error occurred while running the pipeline:\n\n{e}")
-                self.unload()
-                return None
-
-            if show_image == True or output_type == 'pil':
-                with torch.no_grad():
-                    image = self.pipe.vae.decode(latent_image / self.pipe.vae.config.scaling_factor, return_dict=False)[0]
-                    decoded_image = self.pipe.image_processor.postprocess(image, output_type="pil")[0]
-            
-                    decoded_image.save(params['temp_image_filepath'])
-
             if output_type == 'latent':
+                try:
+                    latent_image = self.pipe(
+                        **pipe_params,
+                        output_type='latent',
+                    ).images
+                except Exception as e:
+                    print(f"UD: Error occurred while running the pipeline:\n\n{e}")
+                    self.unload()
+                    return None
+            
                 return latent_image
+            
             elif output_type == 'pil':
+                try:
+                    decoded_image = self.pipe(
+                        **pipe_params,
+                        output_type='pil',
+                    ).images[0]
+                except Exception as e:
+                    print(f"UD: Error occurred while running the pipeline:\n\n{e}")
+                    self.unload()
+                    return None
+                
+                decoded_image.save(params['temp_image_filepath'])
+
                 return decoded_image
             
     def pipe_callback(self, pipe, step_index, timestep, callback_kwargs):
