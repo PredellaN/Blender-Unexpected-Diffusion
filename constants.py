@@ -1,5 +1,7 @@
 SD_MODELS = [
     ('stablediffusionapi/NightVision_XL','NightVision_XL', ""),
+    ('stablediffusionapi/nightvision-xl-0791','NightVision_XL 0.7.9,1', ""),
+    ('SG161222/RealVisXL_V4.0', 'RealVisXL V4.0', ""),
     ('stabilityai/stable-diffusion-xl-base-1.0','SDXL Base', ""),
     ('segmind/SSD-1B','SSD-1B', ""),
     ('stabilityai/sdxl-turbo','SDXL Turbo', ""),
@@ -23,6 +25,7 @@ CONTROLNET_MODELS = {
     'SargeZT/controlnet-sd-xl-1.0-softedge-dexined': {'name': 'controlnet-sd-xl-1.0-softedge-dexined', 'model_type': 'diffusers'},
     'monster-labs/control_v1p_sdxl_qrcode_monster': {'name': 'control_v1p_sdxl_qrcode_monster', 'model_type': 'diffusers'},
     'diffusers/controlnet-zoe-depth-sdxl-1.0': {'name': 'controlnet-zoe-depth-sdxl-1.0', 'model_type': 'diffusers'},
+    'ValouF-pimento/ControlNet_SDXL_tile_upscale': {'name': 'ControlNet_SDXL_tile_upscale', 'model_type': 'diffusers'},
 }
 
 T2I_MODELS = {
