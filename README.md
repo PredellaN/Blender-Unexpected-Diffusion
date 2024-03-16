@@ -46,6 +46,7 @@ Contributions are welcome, if you'd like to help improve Unexpected Diffusion, p
 This project is licensed under GPLv3
 
 ## TODO
+- TripoSR from image
 - stable diffusion 3 as soon as available and sufficiently documented
 - StableDiffusionXLInstantIDPipeline ( https://huggingface.co/InstantX/InstantID )
 - easier inpainting
