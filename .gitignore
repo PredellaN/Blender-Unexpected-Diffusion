@@ -2,3 +2,4 @@ __pycache__
 .venv
 dependencies
 BlenderUnexpectedDiffusion.code-workspace
+tmp
