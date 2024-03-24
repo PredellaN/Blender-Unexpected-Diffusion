@@ -94,17 +94,17 @@ class UDPropertyGroup(bpy.types.PropertyGroup):
         default='controlnet'
     ) # type: ignore
 
-    controlnet_list : bpy.props.CollectionProperty(type=ControlNetListItem)
-    t2i_list : bpy.props.CollectionProperty(type=T2iListItem)
+    controlnet_list : bpy.props.CollectionProperty(type=ControlNetListItem) # type: ignore
+    t2i_list : bpy.props.CollectionProperty(type=T2iListItem) # type: ignore
     control_list_index : bpy.props.IntProperty(
         default=-1,
         update=lambda self, context: setattr(self, 'control_list_index', -1)
     ) # type: ignore
 
-    running : bpy.props.BoolProperty(name="is running", default=0)
-    progress : bpy.props.IntProperty(name="", min=0, max=100, default=0)
-    progress_text : bpy.props.StringProperty(name="")
-    stop_process: bpy.props.BoolProperty(name="stop", default=0)
+    running: bpy.props.BoolProperty(name="is running", default=0) # type: ignore
+    progress: bpy.props.IntProperty(name="", min=0, max=100, default=0) # type: ignore
+    progress_text: bpy.props.StringProperty(name="") # type: ignore
+    stop_process: bpy.props.BoolProperty(name="stop", default=0) # type: ignore
 
     ## Utilities
     canny_strength: bpy.props.FloatProperty(

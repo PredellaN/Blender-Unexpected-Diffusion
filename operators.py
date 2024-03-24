@@ -1,8 +1,5 @@
-import bpy, os, tempfile, threading, random, math
+import bpy, os, tempfile, threading, random, math, subprocess, sys
 from bpy.types import Operator
-import numpy as np
-from PIL import Image
-import cv2
 
 from . import property_groups as pg
 from . import ud_processor as ud
@@ -25,16 +22,15 @@ class Run_UD(Operator):
 
         try:
             result = worker.run(ws, params = parameters)
-
             if result:
                 image = bpy.data.images.load(parameters['temp_image_filepath'])
                 image.name = parameters['prompt'][:57] + "-" + str(parameters['seed'])
                 image_area.spaces.active.image = image
 
         except Exception as e:
-            self.report({'INFO'}, f"Error occurred: {e}")
-
-        ws.ud.running = 0
+            print(f"Error occurred: {e}")
+        finally:
+            ws.ud.running = 0
 
     def ud_upscale_task(self, parameters, image_area, ws):
         try:
@@ -56,7 +52,7 @@ class Run_UD(Operator):
                 image_area.spaces.active.image = image
                 
         except Exception as e:
-            self.report({'INFO'}, f"Error occurred: {e}")
+            print(f"Error occurred: {e}")
 
         finally:
             ws.ud.running = 0
@@ -336,6 +332,8 @@ class Generate_Map(Operator):
 
         # Out-of-blender processing
         if self.mode in ['canny']:
+            import cv2
+
             image = cv2.imread(temp_image_filepath)
 
             edges = cv2.Canny(image, 600 * (1-ws.ud.canny_strength), 1200 * (1-ws.ud.canny_strength))

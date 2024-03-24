@@ -22,11 +22,11 @@ class UDPanel(bpy.types.Panel):
     bl_label = "Unexpected Diffusion"
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'UI'
+    bl_category = 'Unexpected Diffusion'
 
     def draw(self, context):
         layout = self.layout
         ws = context.workspace
-        # ws.ud.running = 0
         
         row = layout.row()
         row.label(text="Unexpected Diffusion", icon='UV')

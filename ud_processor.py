@@ -1,15 +1,15 @@
-from diffusers import T2IAdapter, MultiAdapter, DPMSolverMultistepScheduler, StableDiffusionXLControlNetPipeline, DiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionXLAdapterPipeline, StableDiffusionUpscalePipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline, StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLControlNetImg2ImgPipeline, ControlNetModel, AutoencoderKL
-from diffusers import EDMDPMSolverMultistepScheduler
-import bpy
+
 import os
+import bpy
+
+from diffusers import T2IAdapter, MultiAdapter, EDMDPMSolverMultistepScheduler, DPMSolverMultistepScheduler, StableDiffusionXLControlNetPipeline, DiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionXLAdapterPipeline, StableDiffusionUpscalePipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline, StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLControlNetImg2ImgPipeline, ControlNetModel, AutoencoderKL
 import numpy as np
 import torch
-from PIL import Image
 from PIL import Image, ImageEnhance
 from realesrgan_ncnn_py import Realesrgan
-from . import gpudetector
 
-from .constants import SD_MODELS, CONTROLNET_MODELS, T2I_MODELS
+from . import gpudetector
+from .constants import CONTROLNET_MODELS
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -215,7 +215,7 @@ class UD_Processor():
             self.ws.ud.progress_text = 'Resizing with Realesrgan ...'
 
             # Resize to 4x using realesrgan
-            realesrgan = Realesrgan(gpuid = gpudetector.get_nvidia_gpu(), model = 4)
+            realesrgan = Realesrgan(gpuid = gpudetector.get_dedicated_gpu(), model = 4)
             image = realesrgan.process_pil(image)
             realesrgan = None
             upscaled_image = image.resize((current_width * 2, current_height * 2), Image.Resampling.LANCZOS)

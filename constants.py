@@ -1,3 +1,5 @@
+import os
+
 SD_MODELS = [
     ('stablediffusionapi/NightVision_XL','NightVision_XL', ""),
     ('stablediffusionapi/nightvision-xl-0791','NightVision_XL 0.7.9,1', ""),
@@ -36,3 +38,18 @@ T2I_MODELS = {
     'TencentARC/t2i-adapter-depth-zoe-sdxl-1.0': {'name': 't2i-adapter-depth-zoe-sdxl-1.0', 'model_type': 'diffusers'},
     'TencentARC/t2i-adapter-openpose-sdxl-1.0': {'name': 't2i-adapter-openpose-sdxl-1.0', 'model_type': 'diffusers'},
 }
+
+DEPENDENCIES = [
+    'opencv-python-headless', 
+    'diffusers', 
+    'transformers', 
+    "torch", 
+    "pillow", 
+    "realesrgan-ncnn-py", 
+    "vulkan", 
+    'omegaconf',
+    'accelerate'
+]
+
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+DEPENDENCIES_DIR = os.path.join(SCRIPT_DIR, "dependencies")

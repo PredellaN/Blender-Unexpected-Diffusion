@@ -1,13 +1,6 @@
-import collections
-import collections.abc
+def get_dedicated_gpu():
+    import vulkan as vk
 
-# Compatibility layer for collections.Iterable in Python 3.10
-if not hasattr(collections, 'Iterable'):
-    collections.Iterable = collections.abc.Iterable
-
-import vulkan as vk
-
-def get_nvidia_gpu():
     # Initialize Vulkan
     app_info = vk.VkApplicationInfo(
         sType=vk.VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -28,11 +21,8 @@ def get_nvidia_gpu():
 
     for i, device in enumerate(physical_devices):
         properties = vk.vkGetPhysicalDeviceProperties(device)
-        device_name = properties.deviceName
-        if "NVIDIA" in device_name:
-            gpu_id = i
-            break
-
-    # Clean up
+        if properties.deviceType == vk.VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+            break  # Prioritize discrete GPUs
+        
     vk.vkDestroyInstance(instance, None)
-    return gpu_id
+    return i
