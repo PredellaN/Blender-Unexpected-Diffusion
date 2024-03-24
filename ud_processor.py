@@ -60,6 +60,16 @@ def is_mask_almost_black(mask, tolerance=5):
 
     return avg_pixel < tolerance
 
+def get_device():
+    if torch.cuda.is_available():
+        return torch.device('cuda')
+    elif torch.has_rocm:  # Check for AMD GPU support (requires ROCm)
+        return torch.device('hip')
+    elif platform.system() == 'Darwin' and torch.backends.mps.is_available():  # Check for Apple Silicon
+        return torch.device('mps')  # Metal Performance Shaders
+    else:
+        return torch.device('cpu')
+
 class UD_Processor():
     prompt_adds = ", highly detailed, beautiful, 4K, photorealistic, high resolution"
     negative_prompt_adds = ", text, watermark, low-quality, signature, moiré pattern, downsampling, aliasing, distorted, blurry, glossy, blur, jpeg artifacts, compression artifacts, poorly drawn, bad, distortion, twisted, grainy, duplicate, error, pixelated, fake, glitch, overexposed, bad-contrast"
@@ -75,6 +85,8 @@ class UD_Processor():
     loaded_vae = None
     loaded_controlnets = None
     loaded_t2i = None
+
+    device = get_device()
 
     ws = None
 
@@ -226,7 +238,7 @@ class UD_Processor():
             self.unload()   
             model_id = "stabilityai/stable-diffusion-x4-upscaler"
             self.pipe = StableDiffusionUpscalePipeline.from_pretrained(model_id, torch_dtype=torch.float16)
-            self.pipe = self.pipe.to("cuda")
+            self.pipe = self.pipe.to(self.device)
             self.pipe.enable_attention_slicing()
             upscaled_image = self.pipe(
                     prompt=params['prompt'],
@@ -315,7 +327,7 @@ class UD_Processor():
 
                 # LOAD VAE
                 if vae_model:
-                    model_params['vae'] = AutoencoderKL.from_pretrained( vae_model, torch_dtype=torch.float16 ).to("cuda")
+                    model_params['vae'] = AutoencoderKL.from_pretrained( vae_model, torch_dtype=torch.float16 ).to(self.device)
                 
                 try:
                     try:
@@ -325,7 +337,7 @@ class UD_Processor():
                         print(f"fp16 variant not available. Using fp32.")
                         self.pipe = globals()[pipeline_type].from_pretrained(pipeline_model, **model_params)
 
-                    self.pipe.to("cuda")
+                    self.pipe.to(self.device)
                     self.pipe.enable_vae_tiling()
 
                 except Exception as e:
@@ -416,19 +428,19 @@ class UD_Processor():
 
         if CONTROLNET_MODELS[controlnet_model]['model_type'] == 'diffusers':
             try:
-                model = ControlNetModel.from_pretrained(controlnet_model, variant="fp16", use_safetensors=True, torch_dtype=torch.float16).to("cuda")     
+                model = ControlNetModel.from_pretrained(controlnet_model, variant="fp16", use_safetensors=True, torch_dtype=torch.float16).to(self.device)     
                 return model
             except Exception as e:
                 pass
             
             try:
-                model = ControlNetModel.from_pretrained(controlnet_model, use_safetensors=True, torch_dtype=torch.float16).to("cuda")
+                model = ControlNetModel.from_pretrained(controlnet_model, use_safetensors=True, torch_dtype=torch.float16).to(self.device)
                 return model
             except Exception as e:
                 pass
 
             try:
-                model = ControlNetModel.from_pretrained(controlnet_model, torch_dtype=torch.float16).to("cuda")
+                model = ControlNetModel.from_pretrained(controlnet_model, torch_dtype=torch.float16).to(self.device)
                 return model
             except Exception as e:
                 pass
@@ -442,7 +454,7 @@ class UD_Processor():
         model = None
 
         try:
-            model = T2IAdapter.from_pretrained(t2i_model, torch_dtype=torch.float16, variant="fp16").to("cuda")
+            model = T2IAdapter.from_pretrained(t2i_model, torch_dtype=torch.float16, variant="fp16").to(self.device)
             return model
         except Exception as e:
             pass

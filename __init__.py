@@ -25,12 +25,17 @@ class AddonPreferences(bpy.types.AddonPreferences):
         layout = self.layout
         row = layout.row()
 
-        row.operator("addon.install_dependencies")
-        row.enabled = not self.running
+        if are_dependencies_installed(DEPENDENCIES, DEPENDENCIES_DIR):
+            row.label(text="Dependencies installed", icon='CHECKMARK')
+        else:
+            row.operator("addon.install_dependencies")
+            row.enabled = not self.running
+
+
 
 class InstallDependenciesOperator(bpy.types.Operator):
     bl_idname = "addon.install_dependencies"
-    bl_label = "Install/Reinstall Dependencies"
+    bl_label = "Install Dependencies"
 
     def install_packages(self, packages, target_dir):
         prefs = bpy.context.preferences.addons[__package__].preferences 
@@ -91,7 +96,7 @@ def register():
 
 def unregister():
     global registered_classes
-    
+
     for cls in registered_classes[::-1]:
         unregister_class(cls)
 
