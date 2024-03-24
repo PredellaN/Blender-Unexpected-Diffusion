@@ -1,5 +1,5 @@
 
-import os
+import os, platform
 import bpy
 
 from diffusers import T2IAdapter, MultiAdapter, EDMDPMSolverMultistepScheduler, DPMSolverMultistepScheduler, StableDiffusionXLControlNetPipeline, DiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionXLAdapterPipeline, StableDiffusionUpscalePipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline, StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLControlNetImg2ImgPipeline, ControlNetModel, AutoencoderKL
@@ -63,10 +63,10 @@ def is_mask_almost_black(mask, tolerance=5):
 def get_device():
     if torch.cuda.is_available():
         return torch.device('cuda')
-    elif torch.has_rocm:  # Check for AMD GPU support (requires ROCm)
+    elif torch.has_rocm:
         return torch.device('hip')
-    elif platform.system() == 'Darwin' and torch.backends.mps.is_available():  # Check for Apple Silicon
-        return torch.device('mps')  # Metal Performance Shaders
+    elif platform.system() == 'Darwin' and torch.backends.mps.is_available():
+        return torch.device('mps')
     else:
         return torch.device('cpu')
 
