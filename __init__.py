@@ -40,7 +40,7 @@ class InstallDependenciesOperator(bpy.types.Operator):
     def install_packages(self, packages, target_dir):
         prefs = bpy.context.preferences.addons[__package__].preferences 
         try:
-            # subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-t', target_dir] + packages)
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-t', target_dir] + packages)
             time.sleep(2)
             unregister()
             register()
