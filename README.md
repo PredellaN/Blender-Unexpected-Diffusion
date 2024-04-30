@@ -25,7 +25,7 @@ An NVIDIA GPU with at least 8GB of memory
 
 ## Usage
 After installation, open the Image Editor in Blender. You'll find the "Misc" panel on the right side (use `N` if it's not visible). Adjust the settings according to your needs, and click "Run Unexpected Diffusion" to start generating images.
-Tested only with NVIDIA GPU (commits welcome for AMD / Intel / Apple GPUs) and only on Linux (it should work out of the box on windows as well)
+Tested only with NVIDIA GPU on Linux (commits welcome for AMD / Intel / Apple GPUs).
 
 To generate depth and canny maps with the utility, the view from the 3d viewport in the current tab will be used (generating the map will fail if there are no 3d viewports in the current tab) 
 
