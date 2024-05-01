@@ -28,10 +28,9 @@ class AddonPreferences(bpy.types.AddonPreferences):
         if are_dependencies_installed(DEPENDENCIES, DEPENDENCIES_DIR):
             row.label(text="Dependencies installed", icon='CHECKMARK')
         else:
-            row.operator("addon.install_dependencies")
+            text = 'Installing' if self.running else 'Install Dependencies'
+            row.operator("addon.install_dependencies", text=text)
             row.enabled = not self.running
-
-
 
 class InstallDependenciesOperator(bpy.types.Operator):
     bl_idname = "addon.install_dependencies"
@@ -42,7 +41,7 @@ class InstallDependenciesOperator(bpy.types.Operator):
         if not os.path.exists(target_dir):
             os.makedirs(target_dir)
         try:
-            subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-t', target_dir] + packages)
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', '-t', target_dir] + [f'{x[0]}=={x[1]}' if x[1] else x[0] for x in packages])
             unregister()
             register()
         except Exception as e:
@@ -68,7 +67,7 @@ def get_classes(modules):
 
 def are_dependencies_installed(dependencies, dependencies_dir):
     # Check if each dependency has a corresponding folder in the dependencies directory
-    for dep in [dep.replace('-', '_') for dep in dependencies]:
+    for dep in [dep[0].replace('-', '_') for dep in dependencies]:
         # Check if there's any folder that starts with the dependency name
         if not any(os.path.isdir(os.path.join(dependencies_dir, f)) and f.startswith(dep) for f in os.listdir(dependencies_dir)):
             return False
