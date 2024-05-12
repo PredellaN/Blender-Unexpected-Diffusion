@@ -28,6 +28,7 @@ CONTROLNET_MODELS = {
     'monster-labs/control_v1p_sdxl_qrcode_monster': {'name': 'control_v1p_sdxl_qrcode_monster', 'model_type': 'diffusers'},
     'diffusers/controlnet-zoe-depth-sdxl-1.0': {'name': 'controlnet-zoe-depth-sdxl-1.0', 'model_type': 'diffusers'},
     'ValouF-pimento/ControlNet_SDXL_tile_upscale': {'name': 'ControlNet_SDXL_tile_upscale', 'model_type': 'diffusers'},
+    'TheMistoAI/MistoLine': {'name': 'MistoLine', 'model_type': 'diffusers'},
 }
 
 T2I_MODELS = {
