@@ -16,7 +16,7 @@ SD_MODELS = [
     ('Lykon/dreamshaper-xl-turbo','Dreamshaper XL Turbo',''),
 
     ('stablediffusionapi/juggernaut-xl-v7','Juggernaut XL v7',''),
-    ('RunDiffusion/Juggernaut-X-v10', 'Juggernaut-X-v10', '')
+    ('RunDiffusion/Juggernaut-X-Hyper', 'Juggernaut-X-Hyper', '')
 
     ('playgroundai/playground-v2-1024px-aesthetic','Playground V2 Aesthetic', ''),
     ('playgroundai/playground-v2.5-1024px-aesthetic','Playground V2.5 Aesthetic', ''),
