@@ -3,16 +3,24 @@ import os
 SD_MODELS = [
     ('stablediffusionapi/NightVision_XL','NightVision_XL', ''),
     ('stablediffusionapi/nightvision-xl-0791','NightVision_XL 0.7.9,1', ''),
+    
     ('SG161222/RealVisXL_V4.0', 'RealVisXL V4.0', ''),
+
     ('stabilityai/stable-diffusion-xl-base-1.0','SDXL Base', ''),
-    ('segmind/SSD-1B','SSD-1B', ''),
     ('stabilityai/sdxl-turbo','SDXL Turbo', ''),
-    ('Lykon/dreamshaper-xl-turbo','Dreamshaper XL Turbo',''),
+    ('Vargol/sdxl-lightning-4-steps','SDXL-Lightning', ''),
+
+    ('segmind/SSD-1B','SSD-1B', ''),
+
     ('Lykon/dreamshaper-xl-1-0','Dreamshaper XL 1.0',''),
+    ('Lykon/dreamshaper-xl-turbo','Dreamshaper XL Turbo',''),
+
     ('stablediffusionapi/juggernaut-xl-v7','Juggernaut XL v7',''),
+    ('RunDiffusion/Juggernaut-X-v10', 'Juggernaut-X-v10', '')
+
     ('playgroundai/playground-v2-1024px-aesthetic','Playground V2 Aesthetic', ''),
     ('playgroundai/playground-v2.5-1024px-aesthetic','Playground V2.5 Aesthetic', ''),
-    ('Vargol/sdxl-lightning-4-steps','SDXL-Lightning', ''),
+
 ]
 
 CONTROLNET_MODELS = {
