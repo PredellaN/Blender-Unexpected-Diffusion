@@ -1,106 +1,67 @@
+import bpy, sys, os
+
+### Constants
+ADDON_FOLDER = os.path.dirname(os.path.abspath(__file__))
+DEPENDENCIES_FOLDER = os.path.join(ADDON_FOLDER, "deps")
+PG_NAME = "BlenderUnexpectedDiffusion"
+PG_NAME_LC = PG_NAME.lower()
+
+### Dependencies
+from collections import namedtuple
+Dependency = namedtuple("Dependency", ["module", "package", "name"])
+DEPENDENCIES = (
+    Dependency(module='opencv-python-headless', package=None, name=None),
+    Dependency(module='diffusers', package=None, name=None),
+    Dependency(module='transformers', package=None, name=None),
+    Dependency(module='tokenizers', package=None, name=None),
+    Dependency(module='pillow', package=None, name=None),
+    Dependency(module='realesrgan-ncnn-py', package=None, name=None),
+    Dependency(module='vulkan', package=None, name=None),
+    Dependency(module='omegaconf', package=None, name=None),
+    Dependency(module='accelerate', package=None, name=None),
+)
+
+### Blender Addon Initialization
 bl_info = {
     "name" : "Blender Unexpected Diffusion",
     "author" : "Nicolas Predella",
     "description" : "",
-    "blender" : (4, 0, 0),
+    "blender" : (4, 2, 0),
     "version" : (0, 0, 2),
     "location" : "",
     "warning" : "",
     "category" : "Generic"
 }
 
-import bpy, sys, os, importlib, threading, subprocess, inspect, time, pkgutil
-from bpy.utils import register_class, unregister_class
-
-from .constants import DEPENDENCIES, DEPENDENCIES_DIR
-sys.path.append(DEPENDENCIES_DIR)
-
-## PREFERENCES
-class AddonPreferences(bpy.types.AddonPreferences):
-    bl_idname = __package__
-
-    running: bpy.props.BoolProperty(default=False)
-
-    def draw(self, context):
-        layout = self.layout
-        row = layout.row()
-
-        if are_dependencies_installed(DEPENDENCIES, DEPENDENCIES_DIR):
-            row.label(text="Dependencies installed", icon='CHECKMARK')
-        else:
-            text = 'Installing' if self.running else 'Install Dependencies'
-            row.operator("addon.install_dependencies", text=text)
-            row.enabled = not self.running
-
-class InstallDependenciesOperator(bpy.types.Operator):
-    bl_idname = "addon.install_dependencies"
-    bl_label = "Install Dependencies"
-
-    def install_packages(self, packages, target_dir):
-        prefs = bpy.context.preferences.addons[__package__].preferences 
-        if not os.path.exists(target_dir):
-            os.makedirs(target_dir)
-        try:
-            subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', '-t', target_dir] + [f'{x[0]}=={x[1]}' if x[1] else x[0] for x in packages])
-            unregister()
-            register()
-        except Exception as e:
-            print(f"Installation failed: {str(e)}")
-        finally:
-            prefs.running = False
-
-    def execute(self, context):
-        prefs = bpy.context.preferences.addons[__package__].preferences 
-        prefs.running = True
-
-        thread = threading.Thread(target=self.install_packages, args=[DEPENDENCIES, DEPENDENCIES_DIR])
-        thread.start()
-
-        return {'FINISHED'}
-
-def get_classes(modules):
-    classes = []
-    for module in modules:
-        classes_in_module = [cls for name, cls in inspect.getmembers(module, inspect.isclass) if cls.__module__ == module.__name__]
-        classes.extend(classes_in_module)
-    return classes   
-
-def are_dependencies_installed(dependencies, dependencies_dir):
-    # Check if each dependency has a corresponding folder in the dependencies directory
-    for dep in [dep[0].replace('-', '_') for dep in dependencies]:
-        # Check if there's any folder that starts with the dependency name
-        if not any(os.path.isdir(os.path.join(dependencies_dir, f)) and f.startswith(dep) for f in os.listdir(dependencies_dir)):
-            return False
-    return True
-
-## REGISTERING
+### Initialization
+registered_classes = []
+dependencies_installed = False
+blender_globals = {}
+sys.path.append(DEPENDENCIES_FOLDER)
 def register():
-    global registered_classes
-    registered_classes = []
+    from .functions import modules as mod
 
-    classes_to_register = [AddonPreferences, InstallDependenciesOperator]
+    global dependencies_installed
+    dependencies_installed = mod.are_dependencies_installed(DEPENDENCIES, DEPENDENCIES_FOLDER)
 
-    deps_installed = are_dependencies_installed(DEPENDENCIES, DEPENDENCIES_DIR)
+    from . import preferences as pref
+    mod.reload_modules([pref])
+    registered_classes.extend(mod.register_classes(mod.get_classes([pref])))
+    preferences = bpy.context.preferences.addons[__package__].preferences
 
-    if deps_installed:
-        from . import property_groups as pg, operators as op, panels as pn
-        classes_to_register.extend(get_classes([pg, op, pn]))
+    from . import operators as op
+    from . import panels as pn
+    from . import property_groups as pg
+    mod.reload_modules([op, pn, pg])
+    registered_classes.extend(mod.register_classes(mod.get_classes([op,pn,pg])))
 
-    for cls in classes_to_register:
-        register_class(cls)
+    setattr(bpy.types.WorkSpace, PG_NAME_LC, bpy.props.PointerProperty(type=pg.UDPropertyGroup))
 
-    registered_classes.extend(classes_to_register)
+def unregister():   
+    from .functions import modules as mod
 
-    if deps_installed:
-        bpy.types.WorkSpace.ud = bpy.props.PointerProperty(type=pg.UDPropertyGroup)
+    mod.unregister_classes(registered_classes)
 
-def unregister():
-    global registered_classes
-
-    for cls in registered_classes[::-1]:
-        unregister_class(cls)
-
-    registered_classes = []
 
 if __name__ == "__main__":
     register()

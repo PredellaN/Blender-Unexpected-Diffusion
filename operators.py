@@ -1,8 +1,9 @@
-import bpy, os, tempfile, threading, random, math, subprocess, sys
+import bpy, os, tempfile, threading, random, math
 from bpy.types import Operator
-
+from . import PG_NAME_LC, blender_globals
 from . import property_groups as pg
-from . import ud_processor as ud
+
+worker = None
 
 # Create a temporary file path that works on both Windows and Unix-like systems
 temp_image_file = "temp.png"
@@ -10,15 +11,17 @@ temp_folder = tempfile.gettempdir()
 
 temp_image_filepath = os.path.join(temp_folder, temp_image_file)
 
-worker = ud.UD_Processor()
-
 class Run_UD(Operator):
-    bl_idname = "image.run_ud"
+    bl_idname = f"{PG_NAME_LC}.run_ud"
     bl_label = "Run Unexpected Diffusion"
 
     mode: bpy.props.StringProperty() # type: ignore
 
     def ud_task(self, parameters, image_area, ws):
+        pg = getattr(ws, PG_NAME_LC)
+        
+        from . import ud_processor as ud
+        worker = ud.UD_Processor()
 
         try:
             result = worker.run(ws, params = parameters)
@@ -30,9 +33,14 @@ class Run_UD(Operator):
         except Exception as e:
             print(f"Error occurred: {e}")
         finally:
-            ws.ud.running = 0
+            pg.running = 0
 
     def ud_upscale_task(self, parameters, image_area, ws):
+        pg = getattr(ws, PG_NAME_LC)
+
+        from . import ud_processor as ud
+        worker = ud.UD_Processor()
+
         try:
             space = image_area.spaces.active
 
@@ -55,28 +63,29 @@ class Run_UD(Operator):
             print(f"Error occurred: {e}")
 
         finally:
-            ws.ud.running = 0
+            pg.running = 0
 
     def execute(self, context):
         areas = bpy.context.screen.areas
-        ws = bpy.context.workspace
+        ws = context.workspace
+        pg = getattr(ws, PG_NAME_LC)
 
-        ws.ud.running = 1
-        ws.ud.progress = 0
-        ws.ud.progress_text = ""
+        pg.running = 1
+        pg.progress = 0
+        pg.progress_text = ""
 
         # Prepare parameters
-        parameters = {prop.identifier: getattr(ws.ud, prop.identifier) 
-                   for prop in pg.UDPropertyGroup.bl_rna.properties 
+        parameters = {prop.identifier: getattr(pg, prop.identifier) 
+                   for prop in pg.bl_rna.properties 
                    if not prop.is_readonly}
         
         parameters['temp_image_filepath'] = temp_image_filepath
 
-        if ws.ud.seed == 0:
+        if pg.seed == 0:
             parameters['seed'] = random.randint(1, 99999)
 
-        cm = ws.ud.control_mode
-        for item in getattr(ws.ud, f'{cm}_list'):
+        cm = pg.control_mode
+        for item in getattr(pg, f'{cm}_list'):
             if getattr(item, f'{cm}_image_slot') and getattr(item, f'{cm}_factor') > 0:
                 for entry in [f'{cm}_model',f'{cm}_image_slot',f'{cm}_factor']:
                     if not parameters.get(entry):
@@ -100,60 +109,68 @@ class Run_UD(Operator):
         return {'FINISHED'}
     
 class Unload_UD(Operator):
-    bl_idname = "image.unload_ud"
+    bl_idname = f"{PG_NAME_LC}.unload_ud"
     bl_label = "Release memory"
 
     def execute(self, context):
-        worker.unload()
+        global worker
+        if worker:
+            worker.unload()
         return {'FINISHED'}
     
 class Stop_UD(Operator):
-    bl_idname = "image.stop_ud"
+    bl_idname = f"{PG_NAME_LC}.stop_ud"
     bl_label = "Stop generation"
 
     def execute(self, context):
         ws = context.workspace
-        ws.ud.stop_process = 1
+        pg = getattr(ws, PG_NAME_LC)
+        pg.stop_process = 1
         return {'FINISHED'}
     
 class Control_Mode(Operator):
-    bl_idname = "control.control_mode"
+    bl_idname = f"{PG_NAME_LC}.control_mode"
     bl_label = "Set Control Mode"
 
     switch_mode: bpy.props.StringProperty() # type: ignore
 
     def execute(self, context):
-        context.workspace.ud.control_mode = self.switch_mode
+        ws = context.workspace
+        pg = getattr(ws, PG_NAME_LC)
+        pg.control_mode = self.switch_mode
         return {'FINISHED'}
     
 class Control_AddItem(Operator):
-    bl_idname = "control.add_item"
+    bl_idname = f"{PG_NAME_LC}.control_add_item"
     bl_label = "Add ControlNet Item"
 
     def execute(self, context):
         ws = context.workspace
-        control_list = getattr(ws.ud, f'{ws.ud.control_mode}_list')
+        pg = getattr(ws, PG_NAME_LC)
+        control_list = getattr(pg, f'{pg.control_mode}_list')
         control_list.add()
         return {'FINISHED'}
     
 class Control_RemoveItem(Operator):
-    bl_idname = "control.remove_item"
+    bl_idname = f"{PG_NAME_LC}.control_remove_item"
     bl_label = "Remove Controlnet"
 
     item_index: bpy.props.IntProperty() # type: ignore
 
     def execute(self, context):
         ws = context.workspace
-        control_list = getattr(ws.ud, f'{ws.ud.control_mode}_list')
+        pg = getattr(ws, PG_NAME_LC)
+        control_list = getattr(pg, f'{pg.control_mode}_list')
         control_list.remove(self.item_index)
         return {'FINISHED'}
     
 class Project_UVs(bpy.types.Operator):
-    bl_idname = "generate.projected_uvs"
+    bl_idname = f"{PG_NAME_LC}.generate_projected_uvs"
     bl_label = "Project UVs from View"
 
     def execute(self, context):
         ws = context.workspace
+        pg = getattr(ws, PG_NAME_LC)
 
         for area in context.screen.areas:
             if area.type == 'VIEW_3D':
@@ -174,19 +191,20 @@ class Project_UVs(bpy.types.Operator):
 
         bpy.ops.uv.select_all(action='SELECT')
         bpy.ops.transform.resize(
-            value=(1, ws.ud.width / ws.ud.height, 1), orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)))
+            value=(1, pg.width / pg.height, 1), orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)))
 
         return {'FINISHED'}
 
 class Generate_Map(Operator):
-    bl_idname = "generate.map"
-    bl_label = ""
+    bl_idname = f"{PG_NAME_LC}.generate_map"
+    bl_label = "Generate Map"
 
     mode: bpy.props.StringProperty() # type: ignore
     target: bpy.props.StringProperty() # type: ignore
 
     def execute(self, context):
         ws = context.workspace
+        pg = getattr(ws, PG_NAME_LC)
 
         if self.target == '3d':
             # # Save original status
@@ -233,9 +251,9 @@ class Generate_Map(Operator):
                     temp_camera.location = rv3d.view_matrix.inverted().translation
                     temp_camera.rotation_euler = rv3d.view_rotation.to_euler()
                     temp_camera.data.angle = fov
-                    context.scene.render.resolution_x = ws.ud.width
-                    context.scene.render.resolution_y = ws.ud.height
-                    context.scene.render.resolution_percentage = ws.ud.scale
+                    context.scene.render.resolution_x = pg.width
+                    context.scene.render.resolution_y = pg.height
+                    context.scene.render.resolution_percentage = pg.scale
                     break
 
             # Set the new settings
@@ -336,7 +354,7 @@ class Generate_Map(Operator):
 
             image = cv2.imread(temp_image_filepath)
 
-            edges = cv2.Canny(image, 600 * (1-ws.ud.canny_strength), 1200 * (1-ws.ud.canny_strength))
+            edges = cv2.Canny(image, 600 * (1-pg.canny_strength), 1200 * (1-pg.canny_strength))
             cv2.imwrite(temp_image_filepath, edges)
 
         # Load the image in the depth slot
