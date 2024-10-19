@@ -2,6 +2,7 @@ import bpy, os, tempfile, threading, random, math
 from bpy.types import Operator
 from . import PG_NAME_LC, blender_globals
 from . import property_groups as pg
+from .functions import ud_classes as udcl
 
 worker = None
 
@@ -17,23 +18,12 @@ class Run_UD(Operator):
 
     mode: bpy.props.StringProperty() # type: ignore
 
-    def ud_task(self, params, image_area, ws):
-        pg = getattr(ws, PG_NAME_LC)
-
-        callbacks = {
-            'set_running': lambda value: setattr(pg, 'running', value),
-            'set_progress': lambda value: setattr(pg, 'progress', value),
-            'set_progress_text': lambda value: setattr(pg, 'progress_text', value),
-            'set_stop_process': lambda value: setattr(pg, 'stop_process', value),
-            'stop_process': lambda: pg.stop_process,
-            'redraw': lambda: [area.tag_redraw() for screen in ws.screens for area in screen.areas]
-        }
-
+    def ud_task(self, params, image_area, manager):
         from . import ud_processor as ud
         worker = ud.UD_Processor()
 
         try:
-            result = worker.run(params=params, callbacks=callbacks)
+            result = worker.run(params=params, manager=manager)
             if result:
                 image = bpy.data.images.load(params['temp_image_filepath'])
                 image.name = params['prompt'][:57] + "-" + str(params['seed'])
@@ -42,10 +32,9 @@ class Run_UD(Operator):
         except Exception as e:
             print(f"Error occurred: {e}")
         finally:
-            pg.running = 0
+            manager.set_running(0)
 
-    def ud_upscale_task(self, parameters, image_area, ws):
-        pg = getattr(ws, PG_NAME_LC)
+    def ud_upscale_task(self, parameters, image_area, manager):
 
         from . import ud_processor as ud
         worker = ud.UD_Processor()
@@ -70,9 +59,8 @@ class Run_UD(Operator):
                 
         except Exception as e:
             print(f"Error occurred: {e}")
-
         finally:
-            pg.running = 0
+            manager.set_running(0)
 
     def execute(self, context):
         areas = bpy.context.screen.areas
@@ -87,7 +75,10 @@ class Run_UD(Operator):
         parameters = {prop.identifier: getattr(pg, prop.identifier) 
                    for prop in pg.bl_rna.properties 
                    if not prop.is_readonly}
-        
+
+        # Prepare manager
+        manager = udcl.ProcessManager(ws, pg)
+
         parameters['temp_image_filepath'] = temp_image_filepath
 
         if pg.seed == 0:
@@ -109,9 +100,9 @@ class Run_UD(Operator):
                 image_area = area
 
         if self.mode in ['generate']: 
-            thread = threading.Thread(target=self.ud_task, args=[parameters, image_area, ws])
+            thread = threading.Thread(target=self.ud_task, args=[parameters, image_area, manager])
         elif self.mode in ['upscale_sd','upscale_re']:
-            thread = threading.Thread(target=self.ud_upscale_task, args=[parameters, image_area, ws])
+            thread = threading.Thread(target=self.ud_upscale_task, args=[parameters, image_area, manager])
         
         thread.start()
 

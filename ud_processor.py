@@ -1,6 +1,5 @@
 
 import os, platform
-import bpy
 
 from diffusers import T2IAdapter, MultiAdapter, EDMDPMSolverMultistepScheduler, DPMSolverMultistepScheduler, StableDiffusionXLControlNetPipeline, DiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionXLAdapterPipeline, StableDiffusionUpscalePipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline, StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLControlNetImg2ImgPipeline, ControlNetModel, AutoencoderKL
 import numpy as np
@@ -10,7 +9,6 @@ from realesrgan_ncnn_py import Realesrgan
 
 from . import gpudetector
 from .constants import CONTROLNET_MODELS
-from . import PG_NAME_LC, blender_globals
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -89,10 +87,10 @@ class UD_Processor():
 
     device = get_device()
 
-    callbacks = None
+    manager = None
 
-    def run(self, params, callbacks=None):
-        self.callbacks = callbacks
+    def run(self, params, manager):
+        self.manager = manager
 
         target_width = round((params['width'] * params['scale'] / 100) / 16) * 16
         target_height = round((params['height'] * params['scale'] / 100) / 16) * 16
@@ -212,8 +210,8 @@ class UD_Processor():
         else:
             return None
 
-    def upscale(self, params, callbacks): 
-        self.callbacks = callbacks
+    def upscale(self, params, manager): 
+        self.manager = manager
 
         image = Image.open(params['temp_image_filepath'])
 
@@ -224,8 +222,8 @@ class UD_Processor():
 
         if params['mode'] == 'upscale_re':
             
-            self.callbacks['set_progress'](0)
-            self.callbacks['set_progress_text']('Resizing with Realesrgan ...')
+            self.manager.set_progress(0)
+            self.manager.set_progress_text('Resizing with Realesrgan ...')
 
             # Resize to 4x using realesrgan
             realesrgan = Realesrgan(gpuid = gpudetector.get_dedicated_gpu(), model = 4)
@@ -290,7 +288,7 @@ class UD_Processor():
             output_type = 'latent',
         ):
 
-        self.callbacks['set_progress'](0)
+        self.manager.set_progress(0)
 
         with torch.no_grad(): 
             # Initializing dict with common parameters
@@ -309,7 +307,7 @@ class UD_Processor():
             # INITIALIZE PIPE IF NEEDED
             if self.loaded_model != pipeline_model or self.loaded_model_type != pipeline_type or self.loaded_vae != vae_model or self.loaded_controlnets != controlnet_models or self.loaded_t2i != t2i_models:
                 
-                self.callbacks['set_progress_text']('Loading pipeline...')
+                self.manager.set_progress_text('Loading pipeline...')
                 model_params = {
                     'torch_dtype': torch.float16,
                     'add_watermarker': False,
@@ -398,14 +396,14 @@ class UD_Processor():
                 return decoded_image
             
     def pipe_callback(self, pipe, step_index, timestep, callback_kwargs):
-        if self.callbacks['stop_process']() == 1:
-            self.callbacks['set_stop_process'](0)
+        if self.manager.stop_process() == 1:
+            self.manager.set_stop_process(0)
             raise Exception("Inference cancelled.") ## No cleaner way found
 
-        self.callbacks['set_progress'](int((step_index + 1) / pipe.num_timesteps * 100))
-        self.callbacks['set_progress_text'](f'Step {step_index + 1} / {pipe.num_timesteps}')
+        self.manager.set_progress(int((step_index + 1) / pipe.num_timesteps * 100))
+        self.manager.set_progress_text(f'Step {step_index + 1} / {pipe.num_timesteps}')
 
-        self.callbacks['redraw']()
+        self.manager.redraw()
 
         return callback_kwargs
     
