@@ -1,5 +1,5 @@
 import bpy
-from . import PG_NAME_LC, blender_globals
+from . import PG_NAME_LC, blender_globals, dependencies_installed
 
 class MY_UL_ControlList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
@@ -35,6 +35,11 @@ class UDPanel(bpy.types.Panel):
         
         row = layout.row()
         row.label(text="Unexpected Diffusion", icon='UV')
+
+        if not dependencies_installed:
+            row = layout.row()
+            row.label(text="Dependencies not installed!")
+            return
 
         row = layout.row()
         for item_list in [

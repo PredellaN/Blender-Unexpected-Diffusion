@@ -10,12 +10,12 @@ PG_NAME_LC = PG_NAME.lower()
 from collections import namedtuple
 Dependency = namedtuple("Dependency", ["module", "package", "name"])
 DEPENDENCIES = (
-    Dependency(module='opencv-python-headless', package=None, name=None),
+    Dependency(module='cv2', package='opencv-python-headless', name=None),
     Dependency(module='diffusers', package=None, name=None),
     Dependency(module='transformers', package=None, name=None),
     Dependency(module='tokenizers', package=None, name=None),
-    Dependency(module='pillow', package=None, name=None),
-    Dependency(module='realesrgan-ncnn-py', package=None, name=None),
+    Dependency(module='PIL', package='pillow', name=None),
+    Dependency(module='realesrgan_ncnn_py', package='realesrgan-ncnn-py', name=None),
     Dependency(module='vulkan', package=None, name=None),
     Dependency(module='omegaconf', package=None, name=None),
     Dependency(module='accelerate', package=None, name=None),
@@ -38,6 +38,7 @@ registered_classes = []
 dependencies_installed = False
 blender_globals = {}
 sys.path.append(DEPENDENCIES_FOLDER)
+
 def register():
     from .functions import modules as mod
 
