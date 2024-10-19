@@ -102,9 +102,11 @@ class UDPanel(bpy.types.Panel):
             row = layout.row()
             row.operator(f"{PG_NAME_LC}.run_ud", text="Run Unexpected Diffusion", icon='IMAGE').mode='generate'
             row.operator(f"{PG_NAME_LC}.unload_ud", text="Release Memory", icon='UNLINKED')
-            row = layout.row()
-            row.operator(f"{PG_NAME_LC}.run_ud", text="Run Light 2x Upscaler", icon='ZOOM_IN').mode='upscale_re'
-            row.operator(f"{PG_NAME_LC}.run_ud", text="Run Heavy 2x Upscaler", icon='ZOOM_IN').mode='upscale_sd'
+
+            if model_type in 'SDXL':
+                row = layout.row()
+                row.operator(f"{PG_NAME_LC}.run_ud", text="Run Light 2x Upscaler", icon='ZOOM_IN').mode='upscale_re'
+                row.operator(f"{PG_NAME_LC}.run_ud", text="Run Heavy 2x Upscaler", icon='ZOOM_IN').mode='upscale_sd'
 
         if pg.running == 1:
             row = layout.row()
