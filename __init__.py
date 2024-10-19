@@ -19,6 +19,8 @@ DEPENDENCIES = (
     Dependency(module='vulkan', package=None, name=None),
     Dependency(module='omegaconf', package=None, name=None),
     Dependency(module='accelerate', package=None, name=None),
+    Dependency(module='sentencepiece', package=None, name=None),
+    Dependency(module='imwatermark', package='invisible-watermark', name=None),
 )
 
 ### Blender Addon Initialization

@@ -12,6 +12,9 @@ class ProcessManager:
     def set_progress_text(self, value):
         self.pg.progress_text = value
 
+    def set_stop_process(self, value):
+        self.pg.stop_process = value
+
     def stop_process(self):
         return self.pg.stop_process
 

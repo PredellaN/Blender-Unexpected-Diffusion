@@ -49,7 +49,6 @@ class UDPanel(bpy.types.Panel):
             ['scale','width','height'],
             ['seed'],
             ['inference_steps','cfg_scale'],
-            ['high_noise_frac','refiner_strength'],
             ['init_image_slot'],
             ['denoise_strength'],
             ['init_mask_slot']]:
@@ -57,8 +56,7 @@ class UDPanel(bpy.types.Panel):
             has_item = False
             for item in item_list:
                 if (
-                    item == 'refiner_strength' and pg.high_noise_frac == 1  # Check for 'refiner_strength' with high noise
-                    or item in ['denoise_strength', 'init_mask_slot'] and not pg.init_image_slot  # Check for 'denoise_strength' or 'init_mask_slot' without an init image
+                    item in ['denoise_strength', 'init_mask_slot'] and not pg.init_image_slot  # Check for 'denoise_strength' or 'init_mask_slot' without an init image
                     or item in ['init_image_slot', 'denoise_strength', 'init_mask_slot'] and pg.control_mode == 't2i'
                 ):
                     continue

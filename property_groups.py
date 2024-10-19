@@ -1,5 +1,8 @@
 import bpy
-from .constants import SD_MODELS, CONTROLNET_MODELS, T2I_MODELS
+from .constants import DIFFUSION_MODELS, CONTROLNET_MODELS, T2I_MODELS
+
+def parse_sd_models(models):
+    return [(model.id, model.label, '') for model in models]
 
 class ControlNetListItem(bpy.types.PropertyGroup):
     def from_controlnet_models(self, context):
@@ -18,7 +21,7 @@ class T2iListItem(bpy.types.PropertyGroup):
     t2i_factor: bpy.props.FloatProperty(name='', min=0.0, max=5.0, step=0.05, default=0.5) # type: ignore
 
 class UDPropertyGroup(bpy.types.PropertyGroup):
-    model: bpy.props.EnumProperty(items=SD_MODELS, name="Model") # type: ignore
+    model: bpy.props.EnumProperty(items=parse_sd_models(DIFFUSION_MODELS), name="Model") # type: ignore
     prompt: bpy.props.StringProperty(name="Prompt", default="A close up of a cat with sunglasses driving a ferrari, golden hour") # type: ignore
     negative_prompt: bpy.props.StringProperty(name="Negative Prompt") # type: ignore
     scale: bpy.props.IntProperty(
@@ -57,20 +60,6 @@ class UDPropertyGroup(bpy.types.PropertyGroup):
         default=5,
         min=0,
         precision=1,
-    ) # type: ignore
-    refiner_strength: bpy.props.FloatProperty(
-        name='Refiner strength',
-        max=1,
-        default=0.3,
-        min=0,
-        precision=2,
-    ) # type: ignore
-    high_noise_frac: bpy.props.FloatProperty(
-        name='High noise fraction',
-        max=1,
-        default=1,
-        min=0,
-        precision=2,
     ) # type: ignore
     init_image_slot: bpy.props.PointerProperty(
         name="Init Image",

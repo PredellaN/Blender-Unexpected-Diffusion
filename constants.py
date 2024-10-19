@@ -1,26 +1,29 @@
-import os
+from collections import namedtuple
 
-SD_MODELS = [
-    ('stablediffusionapi/NightVision_XL','NightVision_XL', ''),
-    ('stablediffusionapi/nightvisionxl','NightVision_XL 0.9.0', ''),
+DiffModel = namedtuple('SDModel', ['id', 'label', 'type'])
+
+DIFFUSION_MODELS = [
+    DiffModel('stablediffusionapi/NightVision_XL', 'NightVision_XL', 'SDXL'),
+    DiffModel('stablediffusionapi/nightvisionxl', 'NightVision_XL 0.9.0', 'SDXL'),
     
-    ('SG161222/RealVisXL_V4.0', 'RealVisXL V4.0', ''),
+    DiffModel('SG161222/RealVisXL_V4.0', 'RealVisXL V4.0', 'SDXL'),
 
-    ('stabilityai/stable-diffusion-xl-base-1.0','SDXL Base', ''),
-    ('stabilityai/sdxl-turbo','SDXL Turbo', ''),
-    ('Vargol/sdxl-lightning-4-steps','SDXL-Lightning', ''),
+    DiffModel('stabilityai/stable-diffusion-xl-base-1.0', 'SDXL Base', 'SDXL'),
+    DiffModel('stabilityai/sdxl-turbo', 'SDXL Turbo', 'SDXL'),
+    DiffModel('Vargol/sdxl-lightning-4-steps', 'SDXL-Lightning', 'SDXL'),
 
-    ('segmind/SSD-1B','SSD-1B', ''),
+    DiffModel('segmind/SSD-1B', 'SSD-1B', 'SDXL'),
 
-    ('Lykon/dreamshaper-xl-1-0','Dreamshaper XL 1.0',''),
-    ('Lykon/dreamshaper-xl-turbo','Dreamshaper XL Turbo',''),
+    DiffModel('Lykon/dreamshaper-xl-1-0', 'Dreamshaper XL 1.0', 'SDXL'),
+    DiffModel('Lykon/dreamshaper-xl-turbo', 'Dreamshaper XL Turbo', 'SDXL'),
 
-    ('stablediffusionapi/juggernaut-xl-v7', 'Juggernaut XL v7', ''),
-    ('RunDiffusion/Juggernaut-X-Hyper', 'Juggernaut-X-Hyper', ''),
+    DiffModel('stablediffusionapi/juggernaut-xl-v7', 'Juggernaut XL v7', 'SDXL'),
+    DiffModel('RunDiffusion/Juggernaut-X-Hyper', 'Juggernaut-X-Hyper', 'SDXL'),
 
-    ('playgroundai/playground-v2-1024px-aesthetic','Playground V2 Aesthetic', ''),
-    ('playgroundai/playground-v2.5-1024px-aesthetic','Playground V2.5 Aesthetic', ''),
+    DiffModel('playgroundai/playground-v2-1024px-aesthetic', 'Playground V2 Aesthetic', 'SDXL'),
+    DiffModel('playgroundai/playground-v2.5-1024px-aesthetic', 'Playground V2.5 Aesthetic', 'SDXL'),
 
+    DiffModel('black-forest-labs/FLUX.1-schnell', 'FLUX.1-schnell', 'FLUX'),
 ]
 
 CONTROLNET_MODELS = {
@@ -49,18 +52,3 @@ T2I_MODELS = {
     'TencentARC/t2i-adapter-depth-zoe-sdxl-1.0': {'name': 't2i-adapter-depth-zoe-sdxl-1.0', 'model_type': 'diffusers'},
     'TencentARC/t2i-adapter-openpose-sdxl-1.0': {'name': 't2i-adapter-openpose-sdxl-1.0', 'model_type': 'diffusers'},
 }
-
-DEPENDENCIES = [
-    ('opencv-python-headless',''), 
-    ('diffusers',''), 
-    ('transformers',''),
-    ('tokenizers','0.19.0'),
-    ('pillow',''),
-    ('realesrgan-ncnn-py',''), 
-    ('vulkan',''), 
-    ('omegaconf',''),
-    ('accelerate','')
-]
-
-SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-DEPENDENCIES_DIR = os.path.join(SCRIPT_DIR, 'dependencies')

@@ -3,6 +3,7 @@ from bpy.types import Operator
 from . import PG_NAME_LC, blender_globals
 from . import property_groups as pg
 from .functions import ud_classes as udcl
+from .constants import DIFFUSION_MODELS
 
 worker = None
 
@@ -12,6 +13,12 @@ temp_folder = tempfile.gettempdir()
 
 temp_image_filepath = os.path.join(temp_folder, temp_image_file)
 
+def get_model_type(model_id):
+    for model in DIFFUSION_MODELS:
+        if model.id == model_id:
+            return model.type
+    return None  # Return None if the ID is not found
+
 class Run_UD(Operator):
     bl_idname = f"{PG_NAME_LC}.run_ud"
     bl_label = "Run Unexpected Diffusion"
@@ -20,6 +27,7 @@ class Run_UD(Operator):
 
     def ud_task(self, params, image_area, manager):
         from . import ud_processor as ud
+        global worker
         worker = ud.UD_Processor()
 
         try:
@@ -34,27 +42,27 @@ class Run_UD(Operator):
         finally:
             manager.set_running(0)
 
-    def ud_upscale_task(self, parameters, image_area, manager):
-
+    def ud_upscale_task(self, params, image_area, manager):
         from . import ud_processor as ud
+        global worker
         worker = ud.UD_Processor()
 
         try:
             space = image_area.spaces.active
 
             if space.image:
-                parameters['width'] = space.image.size[0]
-                parameters['height'] = space.image.size[1]
+                params['width'] = space.image.size[0]
+                params['height'] = space.image.size[1]
             
                 original_view_transform = bpy.context.scene.view_settings.view_transform
                 bpy.context.scene.view_settings.view_transform = 'Raw'
-                bpy.data.images[space.image.name].save_render(parameters['temp_image_filepath'])
+                bpy.data.images[space.image.name].save_render(params['temp_image_filepath'])
                 bpy.context.scene.view_settings.view_transform = original_view_transform
 
-                worker.upscale(params = parameters)
+                worker.upscale(params=params, manager=manager)
 
-                image = bpy.data.images.load(parameters['temp_image_filepath'])
-                image.name = parameters['prompt'][:57] + "-" + str(parameters['seed'])
+                image = bpy.data.images.load(params['temp_image_filepath'])
+                image.name = params['prompt'][:57] + "-" + str(params['seed'])
                 image_area.spaces.active.image = image
                 
         except Exception as e:
@@ -71,38 +79,40 @@ class Run_UD(Operator):
         pg.progress = 0
         pg.progress_text = ""
 
-        # Prepare parameters
-        parameters = {prop.identifier: getattr(pg, prop.identifier) 
+        # Prepare params
+        params = {prop.identifier: getattr(pg, prop.identifier) 
                    for prop in pg.bl_rna.properties 
                    if not prop.is_readonly}
 
         # Prepare manager
         manager = udcl.ProcessManager(ws, pg)
 
-        parameters['temp_image_filepath'] = temp_image_filepath
+        # Programmatic params
+        params['temp_image_filepath'] = temp_image_filepath
+        params['pipeline_type'] = get_model_type(params['model'])
 
         if pg.seed == 0:
-            parameters['seed'] = random.randint(1, 99999)
+            params['seed'] = random.randint(1, 99999)
 
         cm = pg.control_mode
         for item in getattr(pg, f'{cm}_list'):
             if getattr(item, f'{cm}_image_slot') and getattr(item, f'{cm}_factor') > 0:
                 for entry in [f'{cm}_model',f'{cm}_image_slot',f'{cm}_factor']:
-                    if not parameters.get(entry):
-                        parameters[entry]=[]
-                    parameters[entry].append(getattr(item, entry))
+                    if not params.get(entry):
+                        params[entry]=[]
+                    params[entry].append(getattr(item, entry))
 
-        parameters['mode'] = self.mode
-        print(parameters)
+        params['mode'] = self.mode
+        print(params)
         
         for area in areas:
             if area.type == 'IMAGE_EDITOR':
                 image_area = area
 
         if self.mode in ['generate']: 
-            thread = threading.Thread(target=self.ud_task, args=[parameters, image_area, manager])
+            thread = threading.Thread(target=self.ud_task, args=[params, image_area, manager])
         elif self.mode in ['upscale_sd','upscale_re']:
-            thread = threading.Thread(target=self.ud_upscale_task, args=[parameters, image_area, manager])
+            thread = threading.Thread(target=self.ud_upscale_task, args=[params, image_area, manager])
         
         thread.start()
 

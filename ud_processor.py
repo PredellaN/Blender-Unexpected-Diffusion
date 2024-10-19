@@ -1,7 +1,7 @@
 
 import os, platform
 
-from diffusers import T2IAdapter, MultiAdapter, EDMDPMSolverMultistepScheduler, DPMSolverMultistepScheduler, StableDiffusionXLControlNetPipeline, DiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionXLAdapterPipeline, StableDiffusionUpscalePipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline, StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLControlNetImg2ImgPipeline, ControlNetModel, AutoencoderKL
+from diffusers import FluxPipeline, T2IAdapter, MultiAdapter, EDMDPMSolverMultistepScheduler, DPMSolverMultistepScheduler, StableDiffusionXLControlNetPipeline, DiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionXLAdapterPipeline, StableDiffusionUpscalePipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline, StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLControlNetImg2ImgPipeline, ControlNetModel, AutoencoderKL
 import numpy as np
 import torch
 from PIL import Image, ImageEnhance
@@ -9,6 +9,7 @@ from realesrgan_ncnn_py import Realesrgan
 
 from . import gpudetector
 from .constants import CONTROLNET_MODELS
+from .pipelines import pipeline_settings
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -21,24 +22,19 @@ def round_to_nearest(n):
         return int(n) + 1
     
 def blender_image_to_pil(blender_image):
-    # Ensure the image is not None
     if blender_image is None:
         raise ValueError("No Blender image provided")
 
-    # Get the image data as a numpy array
-    pixels = np.array(blender_image.pixels[:])  # Flatten pixel values
-    size = blender_image.size[0], blender_image.size[1]  # Image dimensions
+    pixels = np.array(blender_image.pixels[:]) 
+    size = blender_image.size[0], blender_image.size[1]
 
-    # Reshape and convert the array to a suitable format
-    pixels = np.reshape(pixels, (size[1], size[0], 4))  # Assuming RGBA
-    pixels = np.flip(pixels, axis=0)  # Flip the image vertically
-    pixels = (pixels * 255).astype(np.uint8)  # Convert to 8-bit per channel
+    pixels = np.reshape(pixels, (size[1], size[0], 4))
+    pixels = np.flip(pixels, axis=0)
+    pixels = (pixels * 255).astype(np.uint8)
 
-    # Create and return a PIL image
     return Image.fromarray(pixels, 'RGBA')
 
 def create_alpha_mask(image):
-
     if image.mode != 'RGBA':
         raise ValueError("Image does not have an alpha channel")
 
@@ -50,7 +46,6 @@ def create_alpha_mask(image):
     return mask
 
 def is_mask_almost_black(mask, tolerance=5):
-
     if mask.mode != 'L':
         mask = mask.convert('L')
 
@@ -72,7 +67,6 @@ def get_device():
 class UD_Processor():
     prompt_adds = ", highly detailed, beautiful, 4K, photorealistic, high resolution"
     negative_prompt_adds = ", text, watermark, low-quality, signature, moiré pattern, downsampling, aliasing, distorted, blurry, glossy, blur, jpeg artifacts, compression artifacts, poorly drawn, bad, distortion, twisted, grainy, duplicate, error, pixelated, fake, glitch, overexposed, bad-contrast"
-    refiner_model = "stabilityai/stable-diffusion-xl-refiner-1.0"
     vae_model = "madebyollin/sdxl-vae-fp16-fix"
 
     upscale_strength = 0.35
@@ -92,8 +86,7 @@ class UD_Processor():
     def run(self, params, manager):
         self.manager = manager
 
-        target_width = round((params['width'] * params['scale'] / 100) / 16) * 16
-        target_height = round((params['height'] * params['scale'] / 100) / 16) * 16
+        target_width, target_height = (round((params[dim] * params['scale'] / 100) / 16) * 16 for dim in ['width', 'height'])
 
         init_image = blender_image_to_pil(params['init_image_slot']).resize((target_width, target_height)) if params.get('init_image_slot') else None
 
@@ -107,109 +100,51 @@ class UD_Processor():
             else:
                 mask_image = None
 
-        pipeline_type = self.determine_pipeline_type(params, init_image, mask_image)
-        
-        if 'controlnet_image_slot' in params:
-            controlnet_image = [blender_image_to_pil(slot).resize((target_width, target_height)).convert("RGB") for slot in params['controlnet_image_slot']]
-
-        if 't2i_image_slot' in params:
-            t2i_image = [blender_image_to_pil(slot).resize((target_width, target_height)).convert("RGB") for slot in params['t2i_image_slot']]
+        controlnet_image = [blender_image_to_pil(slot).resize((target_width, target_height)).convert("RGB") for slot in params['controlnet_image_slot']] if 'controlnet_image_slot' in params else None
+        t2i_image = [blender_image_to_pil(slot).resize((target_width, target_height)).convert("RGB") for slot in params['t2i_image_slot']] if 't2i_image_slot' in params else None
             
-        overrides={
-            'prompt': params['prompt'] + self.prompt_adds,
-            'negative_prompt': params['negative_prompt'] + self.negative_prompt_adds,
-            'width': target_width,
-            'height': target_height,
-            'generator': torch.manual_seed(params["seed"]),
+        pipeline_type = self.determine_pipeline_type(params, init_image, mask_image)
+
+        # Define a dictionary of potential parameter assignments with lambdas for conditional logic
+        param_mapping = {
+            'prompt': lambda: params['prompt'] + self.prompt_adds,
+            'width': lambda: target_width,
+            'height': lambda: target_height,
+            'generator': lambda: torch.manual_seed(params["seed"]),
+            'num_inference_steps': lambda: round_to_nearest(params['inference_steps'] / (params['denoise_strength'] if init_image else 1)),
+            'guidance_scale': lambda: params['cfg_scale'],
+            'negative_prompt': lambda: params['negative_prompt'] + self.negative_prompt_adds,
+            'image': lambda: next(
+                (img for img in (t2i_image, init_image.convert('RGB'), controlnet_image) if img is not None),
+                None
+            ),
+            'mask_image': lambda: mask_image,
+            'strength': lambda: params['denoise_strength'],
+            'control_image': lambda: params.get('controlnet_image'),
+            'controlnet_conditioning_scale': lambda: params['controlnet_factor'],
+            'adapter_conditioning_scale': lambda: params['t2i_factor'] if len(params['t2i_model']) > 1 else params['t2i_factor'][0],
         }
 
-        params['steps_multiplier'] = 0.1 if 'turbo' in params['model'] else 1
+        pipe_params = {}
+        for key in pipeline_settings[pipeline_type]:
+            if key in param_mapping:
+                value = param_mapping[key]()
+                if value is not None:  
+                    pipe_params[key] = value
 
-        if 'controlnet_model' in params:
-            overrides.update({
-                'image': init_image if init_image else controlnet_image,
-                'controlnet_conditioning_scale': params['controlnet_factor'],
-            })
-            if init_image:
-                overrides.update({
-                    'strength': params['denoise_strength'],
-                    'num_inference_steps': round_to_nearest(params['inference_steps'] / params['denoise_strength']),
-                    'control_image': controlnet_image,
-                })
-
-        elif 't2i_model' in params:
-            if len(params['t2i_model']) > 1:
-                overrides.update({
-                    'image': t2i_image,
-                    'adapter_conditioning_scale': params['t2i_factor'],
-                })     
-            else:
-                overrides.update({
-                    'image': t2i_image[0],
-                    'adapter_conditioning_scale': params['t2i_factor'][0],
-                })                
-
-        else:
-            overrides.update({
-                'denoising_end': params['high_noise_frac']
-                })
-            if init_image:
-                overrides.update({
-                    'image': init_image.convert("RGB"),
-                    'num_inference_steps': round_to_nearest(params['inference_steps'] / params['denoise_strength']),
-                    'strength': params['denoise_strength'],
-                })
-
-        if init_image and mask_image:
-            overrides.update({
-                'mask_image': mask_image,
-            })
-
-        output_type = 'pil' if params['high_noise_frac'] == 1 else 'latent'
-
-        image = self.run_sdxl_pipeline(
+        image = self.run_pipeline(
             params=params,
             pipeline_type=pipeline_type,
             pipeline_model=params['model'],
             vae_model=self.vae_model,
             controlnet_models=params.get('controlnet_model', []),
             t2i_models=params.get('t2i_model', []),
-            overrides=overrides,
-            output_type=output_type,
+            pipe_params=pipe_params,
         )
+
         if image is not None:
-            if output_type =='pil':
-                return image
-
-            elif output_type=='latent':
-                # Start Refining
-                overrides = {
-                    'prompt': params['prompt'] + self.prompt_adds,
-                    'negative_prompt': params['negative_prompt'] + ' hdr ' + self.negative_prompt_adds,
-                    'image': image,
-                    'strength': params['refiner_strength'],
-                }
-
-                if 'controlnet_model' not in params:
-                    overrides['denoising_start'] = params['high_noise_frac']
-                    overrides['num_inference_steps'] = int (params['inference_steps'])
-                else:
-                    overrides['num_inference_steps'] =  round_to_nearest(params['inference_steps'] / params['refiner_strength'])
-
-                decoded_image = self.run_sdxl_pipeline(
-                    params=params,
-                    pipeline_type='StableDiffusionXLImg2ImgPipeline',
-                    pipeline_model=self.refiner_model,
-                    vae_model=self.vae_model,
-                    overrides=overrides,
-                    output_type='pil'
-                )
-
-                return decoded_image
-            
-        else:
-            return None
-
+            return image
+        
     def upscale(self, params, manager): 
         self.manager = manager
 
@@ -217,8 +152,6 @@ class UD_Processor():
 
         current_width = round_to_nearest(params['width']/16)*16
         current_height = round_to_nearest(params['height']/16)*16
-        
-        params['steps_multiplier'] = 0.5 if 'turbo' in params['model'] else 1
 
         if params['mode'] == 'upscale_re':
             
@@ -265,17 +198,16 @@ class UD_Processor():
             }
 
         for model in [params['model']]:
-            decoded_image = self.run_sdxl_pipeline(
+            decoded_image = self.run_pipeline(
                 params=params,
                 pipeline_type='StableDiffusionXLImg2ImgPipeline',
                 pipeline_model=model,
                 vae_model=self.vae_model,
-                overrides=overrides,
-                output_type='pil'
+                pipe_params=overrides,
             )
         return decoded_image
 
-    def run_sdxl_pipeline(
+    def run_pipeline(
             self,
             params,
             pipeline_type,
@@ -283,23 +215,12 @@ class UD_Processor():
             vae_model = None,
             controlnet_models = [],
             t2i_models = [],
-            overrides = {},
-            show_image = True,
-            output_type = 'latent',
+            pipe_params = {},
         ):
 
         self.manager.set_progress(0)
 
         with torch.no_grad(): 
-            # Initializing dict with common parameters
-            pipe_params = {
-                'prompt': params['prompt'],
-                'negative_prompt': params['negative_prompt'],
-                'num_inference_steps': params['inference_steps'],
-                'guidance_scale': params['cfg_scale'],
-            }
-            pipe_params.update(overrides)
-
             # CHANGES FOR SPECIFIC MODELS
             if pipeline_model not in ['stabilityai/stable-diffusion-xl-base-1.0']:
                 vae_model = None
@@ -310,8 +231,10 @@ class UD_Processor():
                 self.manager.set_progress_text('Loading pipeline...')
                 model_params = {
                     'torch_dtype': torch.float16,
-                    'add_watermarker': False,
                 }
+
+                if params['pipeline_type'] == 'SDXL':
+                    model_params['add_watermarker'] = False
 
                 # LOAD CONTROLNET
                 if controlnet_models:
@@ -336,8 +259,13 @@ class UD_Processor():
                         print(f"fp16 variant not available. Using fp32.")
                         self.pipe = globals()[pipeline_type].from_pretrained(pipeline_model, **model_params)
 
-                    self.pipe.to(self.device)
-                    self.pipe.enable_vae_tiling()
+                    if params['pipeline_type'] == 'SDXL':
+                        self.pipe.to(self.device)
+                        self.pipe.enable_vae_tiling()
+                    elif params['pipeline_type'] == 'FLUX':
+                        self.pipe.enable_sequential_cpu_offload()
+                        self.pipe.vae.enable_slicing()
+                        self.pipe.vae.enable_tiling()
 
                 except Exception as e:
                     print(f"UD: Error occurred in loading the pipeline:\n\n{e}")
@@ -351,13 +279,6 @@ class UD_Processor():
                 self.loaded_t2i = t2i_models
                 del model_params
 
-            # CALCULATED SETTINGS
-            pipe_params['num_inference_steps'] = int(pipe_params['num_inference_steps'] * params['steps_multiplier'])
-
-            # SPECIAL SETTINGS FOR SOME MODELS
-            if 'sdxl-turbo' in pipeline_model:
-                pipe_params['guidance_scale'] = 0
-
             print(self.loaded_model + ' ' + self.loaded_model_type)
 
             if pipeline_type not in ['StableDiffusionXLAdapterPipeline']:
@@ -366,34 +287,20 @@ class UD_Processor():
             if pipeline_model in ['playgroundai/playground-v2.5-1024px-aesthetic']:
                 self.pipe.scheduler = EDMDPMSolverMultistepScheduler()
 
-            # RUN STABLE DIFFUSION
-            if output_type == 'latent':
-                try:
-                    latent_image = self.pipe(
-                        **pipe_params,
-                        output_type='latent',
-                    ).images
-                except Exception as e:
-                    print(f"UD: Error occurred while running the pipeline:\n\n{e}")
-                    self.unload()
-                    return None
+            # RUN DIFFUSION
+            try:
+                decoded_image = self.pipe(
+                    **pipe_params,
+                    output_type='pil',
+                ).images[0]
+            except Exception as e:
+                print(f"UD: Error occurred while running the pipeline:\n\n{e}")
+                self.unload()
+                return None
             
-                return latent_image
-            
-            elif output_type == 'pil':
-                try:
-                    decoded_image = self.pipe(
-                        **pipe_params,
-                        output_type='pil',
-                    ).images[0]
-                except Exception as e:
-                    print(f"UD: Error occurred while running the pipeline:\n\n{e}")
-                    self.unload()
-                    return None
-                
-                decoded_image.save(params['temp_image_filepath'])
+            decoded_image.save(params['temp_image_filepath'])
 
-                return decoded_image
+            return decoded_image
             
     def pipe_callback(self, pipe, step_index, timestep, callback_kwargs):
         if self.manager.stop_process() == 1:
@@ -408,16 +315,19 @@ class UD_Processor():
         return callback_kwargs
     
     def determine_pipeline_type(self, params, init_image, mask_image):
-        if 'controlnet_model' in params:
-            if mask_image and init_image:
-                return 'StableDiffusionXLControlNetInpaintPipeline'
-            return 'StableDiffusionXLControlNetImg2ImgPipeline' if init_image else 'StableDiffusionXLControlNetPipeline'
-        elif 't2i_model' in params:
-            return 'StableDiffusionXLAdapterPipeline'
-        else:
-            if mask_image and init_image:
-                return 'StableDiffusionXLInpaintPipeline'
-            return 'StableDiffusionXLImg2ImgPipeline' if init_image else 'StableDiffusionXLPipeline'
+        if params['pipeline_type'] == 'SDXL':
+            if 'controlnet_model' in params:
+                if mask_image and init_image:
+                    return 'StableDiffusionXLControlNetInpaintPipeline'
+                return 'StableDiffusionXLControlNetImg2ImgPipeline' if init_image else 'StableDiffusionXLControlNetPipeline'
+            elif 't2i_model' in params:
+                return 'StableDiffusionXLAdapterPipeline'
+            else:
+                if mask_image and init_image:
+                    return 'StableDiffusionXLInpaintPipeline'
+                return 'StableDiffusionXLImg2ImgPipeline' if init_image else 'StableDiffusionXLPipeline'
+        elif params['pipeline_type'] == 'FLUX':
+            return 'FluxPipeline'
         
     def create_controlnet(self, controlnet_model):
         model = None
