@@ -2,7 +2,7 @@ import os
 
 SD_MODELS = [
     ('stablediffusionapi/NightVision_XL','NightVision_XL', ''),
-    ('stablediffusionapi/nightvision-xl-0791','NightVision_XL 0.7.9,1', ''),
+    ('stablediffusionapi/nightvisionxl','NightVision_XL 0.9.0', ''),
     
     ('SG161222/RealVisXL_V4.0', 'RealVisXL V4.0', ''),
 
@@ -37,6 +37,8 @@ CONTROLNET_MODELS = {
     'diffusers/controlnet-zoe-depth-sdxl-1.0': {'name': 'controlnet-zoe-depth-sdxl-1.0', 'model_type': 'diffusers'},
     'ValouF-pimento/ControlNet_SDXL_tile_upscale': {'name': 'ControlNet_SDXL_tile_upscale', 'model_type': 'diffusers'},
     'TheMistoAI/MistoLine': {'name': 'MistoLine', 'model_type': 'diffusers'},
+    'xinsir/controlnet-tile-sdxl-1.0': {'name': 'controlnet-tile-sdxl-1.0', 'model_type': 'diffusers'},
+    'xinsir/controlnet-union-sdxl-1.0' : {'name': 'controlnet-union-sdxl-1.0', 'model_type': 'diffusers'},
 }
 
 T2I_MODELS = {

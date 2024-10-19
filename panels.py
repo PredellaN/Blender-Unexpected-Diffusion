@@ -66,6 +66,7 @@ class UDPanel(bpy.types.Panel):
             switch_to_xlat = 'Controlnet'
         elif ws.ud.control_mode == 'controlnet':
             current_list = 'controlnet_list'
+            
             current_mode_xlat = 'Controlnet'
             switch_to = 't2i'
             switch_to_xlat = 'T2I Adapter'
