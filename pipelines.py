@@ -11,6 +11,7 @@ pipeline_settings = {
     "StableDiffusionXLAdapterPipeline": ['negative_prompt', "image", "t2i_model", "adapter_conditioning_scale"],
 
     "FluxPipeline": [],
+    "FluxImg2ImgPipeline": ["image", "strength"],
 }
 
 for key in pipeline_settings:

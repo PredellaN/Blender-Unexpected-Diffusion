@@ -11,7 +11,7 @@ from collections import namedtuple
 Dependency = namedtuple("Dependency", ["module", "package", "name"])
 DEPENDENCIES = (
     Dependency(module='cv2', package='opencv-python-headless', name=None),
-    Dependency(module='diffusers', package=None, name=None),
+    Dependency(module='diffusers', package='git+https://github.com/huggingface/diffusers', name=None),
     Dependency(module='transformers', package=None, name=None),
     Dependency(module='tokenizers', package=None, name=None),
     Dependency(module='PIL', package='pillow', name=None),

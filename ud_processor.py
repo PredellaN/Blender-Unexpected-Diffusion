@@ -1,7 +1,7 @@
 
 import os, platform
 
-from diffusers import FluxPipeline, T2IAdapter, MultiAdapter, EDMDPMSolverMultistepScheduler, DPMSolverMultistepScheduler, StableDiffusionXLControlNetPipeline, DiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionXLAdapterPipeline, StableDiffusionUpscalePipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline, StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLControlNetImg2ImgPipeline, ControlNetModel, AutoencoderKL
+from diffusers import FluxPipeline, FluxImg2ImgPipeline, T2IAdapter, MultiAdapter, EDMDPMSolverMultistepScheduler, DPMSolverMultistepScheduler, StableDiffusionXLControlNetPipeline, DiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionXLAdapterPipeline, StableDiffusionUpscalePipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline, StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLControlNetImg2ImgPipeline, ControlNetModel, AutoencoderKL
 import numpy as np
 import torch
 from PIL import Image, ImageEnhance
@@ -235,7 +235,7 @@ class UD_Processor():
                 self.manager.set_progress_text('Loading pipeline...')
 
                 model_params = {
-                    'torch_dtype': torch.float16,
+                    'torch_dtype': torch.bfloat16,
                 }
 
                 if params['pipeline_type'] == 'SDXL':
@@ -332,6 +332,8 @@ class UD_Processor():
                     return 'StableDiffusionXLInpaintPipeline'
                 return 'StableDiffusionXLImg2ImgPipeline' if init_image else 'StableDiffusionXLPipeline'
         elif params['pipeline_type'] == 'FLUX':
+            if init_image:
+                return 'FluxImg2ImgPipeline'
             return 'FluxPipeline'
         
     def create_controlnet(self, controlnet_model):

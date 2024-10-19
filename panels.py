@@ -61,7 +61,7 @@ class UDPanel(bpy.types.Panel):
                 if (
                     item in ['denoise_strength', 'init_mask_slot'] and not pg.init_image_slot  # Check for 'denoise_strength' or 'init_mask_slot' without an init image
                     or item in ['init_image_slot', 'denoise_strength', 'init_mask_slot'] and pg.control_mode == 't2i'
-                    or item in ['init_image_slot', 'denoise_strength', 'init_mask_slot'] and model_type not in 'SDXL'
+                    or item in ['init_mask_slot'] and model_type not in 'SDXL'
                     or item in ['cfg_scale'] and model_type in 'FLUX'
                 ):
                     continue
