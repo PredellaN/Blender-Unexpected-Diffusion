@@ -1,5 +1,6 @@
 import bpy
 from . import PG_NAME_LC, blender_globals, dependencies_installed
+from .functions import basic_functions as bf
 
 class MY_UL_ControlList(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
@@ -10,7 +11,7 @@ class MY_UL_ControlList(bpy.types.UIList):
 
         mode = pg.control_mode
 
-        delete_op = row.operator(f"control.remove_item", text="", icon='X')
+        delete_op = row.operator(f"{PG_NAME_LC}.control_remove_item", text="", icon='X')
         delete_op.item_index = index
 
         row.prop(item, f"{mode}_model")
@@ -40,6 +41,8 @@ class UDPanel(bpy.types.Panel):
             row = layout.row()
             row.label(text="Dependencies not installed!")
             return
+        
+        model_type = bf.get_model_type(pg.model)
 
         row = layout.row()
         for item_list in [
@@ -58,6 +61,8 @@ class UDPanel(bpy.types.Panel):
                 if (
                     item in ['denoise_strength', 'init_mask_slot'] and not pg.init_image_slot  # Check for 'denoise_strength' or 'init_mask_slot' without an init image
                     or item in ['init_image_slot', 'denoise_strength', 'init_mask_slot'] and pg.control_mode == 't2i'
+                    or item in ['init_image_slot', 'denoise_strength', 'init_mask_slot'] and model_type not in 'SDXL'
+                    or item in ['cfg_scale'] and model_type in 'FLUX'
                 ):
                     continue
 
@@ -85,12 +90,14 @@ class UDPanel(bpy.types.Panel):
                 pg, "control_list_index"
                 )
 
-        row = layout.row()
-        row.operator(f"{PG_NAME_LC}.control_add_item", icon='ADD', text=f'Add {current_mode_xlat}')
-        row.operator(f"{PG_NAME_LC}.control_mode", text=f'Switch to {switch_to_xlat}', icon='ARROW_LEFTRIGHT').switch_mode=switch_to
+        if model_type in 'SDXL':
+            row = layout.row()
+            row.operator(f"{PG_NAME_LC}.control_add_item", icon='ADD', text=f'Add {current_mode_xlat}')
+            row.operator(f"{PG_NAME_LC}.control_mode", text=f'Switch to {switch_to_xlat}', icon='ARROW_LEFTRIGHT').switch_mode=switch_to
+            row = layout.row()
 
-        row = layout.row()
         row = row.separator(factor = 2)
+        
         if pg.running == 0:
             row = layout.row()
             row.operator(f"{PG_NAME_LC}.run_ud", text="Run Unexpected Diffusion", icon='IMAGE').mode='generate'

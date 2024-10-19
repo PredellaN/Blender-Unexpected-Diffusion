@@ -3,7 +3,7 @@ from bpy.types import Operator
 from . import PG_NAME_LC, blender_globals
 from . import property_groups as pg
 from .functions import ud_classes as udcl
-from .constants import DIFFUSION_MODELS
+from .functions import basic_functions as bf
 
 worker = None
 
@@ -13,11 +13,7 @@ temp_folder = tempfile.gettempdir()
 
 temp_image_filepath = os.path.join(temp_folder, temp_image_file)
 
-def get_model_type(model_id):
-    for model in DIFFUSION_MODELS:
-        if model.id == model_id:
-            return model.type
-    return None  # Return None if the ID is not found
+
 
 class Run_UD(Operator):
     bl_idname = f"{PG_NAME_LC}.run_ud"
@@ -89,7 +85,7 @@ class Run_UD(Operator):
 
         # Programmatic params
         params['temp_image_filepath'] = temp_image_filepath
-        params['pipeline_type'] = get_model_type(params['model'])
+        params['pipeline_type'] = bf.get_model_type(params['model'])
 
         if pg.seed == 0:
             params['seed'] = random.randint(1, 99999)

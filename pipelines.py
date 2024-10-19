@@ -1,11 +1,15 @@
 pipeline_settings = {
-    "StableDiffusionXLControlNetInpaintPipeline": ['negative_prompt', "controlnet_model", "mask_image", "init_image", ],
-    "StableDiffusionXLControlNetImg2ImgPipeline": ['negative_prompt', "controlnet_model", "init_image", ],
-    "StableDiffusionXLControlNetPipeline": ['negative_prompt', "controlnet_model", ],
-    "StableDiffusionXLAdapterPipeline": ['negative_prompt', "t2i_model" ],
-    "StableDiffusionXLInpaintPipeline": ['negative_prompt', "image", "mask_image", ],
+    "StableDiffusionXLPipeline": ['negative_prompt'],
+
     "StableDiffusionXLImg2ImgPipeline": ['negative_prompt', "image", "strength"],
-    "StableDiffusionXLPipeline": ['negative_prompt', ],
+    "StableDiffusionXLInpaintPipeline": ['negative_prompt', "image", "mask_image", "strength"],
+
+    "StableDiffusionXLControlNetInpaintPipeline": ['negative_prompt', "image", "mask_image", "strength", "controlnet_model", "controlnet_conditioning_scale", "control_image"],
+    "StableDiffusionXLControlNetImg2ImgPipeline": ['negative_prompt', "image", "strength", "controlnet_model", "controlnet_conditioning_scale", "control_image"],
+    "StableDiffusionXLControlNetPipeline": ['negative_prompt', "image", "controlnet_model", "controlnet_conditioning_scale"],
+
+    "StableDiffusionXLAdapterPipeline": ['negative_prompt', "image", "t2i_model", "adapter_conditioning_scale"],
+
     "FluxPipeline": [],
 }
 

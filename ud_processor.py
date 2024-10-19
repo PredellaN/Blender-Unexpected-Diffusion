@@ -100,6 +100,9 @@ class UD_Processor():
             else:
                 mask_image = None
 
+        if init_image:
+            init_image = init_image.convert('RGB')
+
         controlnet_image = [blender_image_to_pil(slot).resize((target_width, target_height)).convert("RGB") for slot in params['controlnet_image_slot']] if 'controlnet_image_slot' in params else None
         t2i_image = [blender_image_to_pil(slot).resize((target_width, target_height)).convert("RGB") for slot in params['t2i_image_slot']] if 't2i_image_slot' in params else None
             
@@ -115,7 +118,7 @@ class UD_Processor():
             'guidance_scale': lambda: params['cfg_scale'],
             'negative_prompt': lambda: params['negative_prompt'] + self.negative_prompt_adds,
             'image': lambda: next(
-                (img for img in (t2i_image, init_image.convert('RGB'), controlnet_image) if img is not None),
+                (img for img in (t2i_image, init_image, controlnet_image) if img is not None),
                 None
             ),
             'mask_image': lambda: mask_image,
@@ -228,7 +231,9 @@ class UD_Processor():
             # INITIALIZE PIPE IF NEEDED
             if self.loaded_model != pipeline_model or self.loaded_model_type != pipeline_type or self.loaded_vae != vae_model or self.loaded_controlnets != controlnet_models or self.loaded_t2i != t2i_models:
                 
+                self.unload()
                 self.manager.set_progress_text('Loading pipeline...')
+
                 model_params = {
                     'torch_dtype': torch.float16,
                 }
@@ -330,31 +335,15 @@ class UD_Processor():
             return 'FluxPipeline'
         
     def create_controlnet(self, controlnet_model):
-        model = None
-
         if CONTROLNET_MODELS[controlnet_model]['model_type'] == 'diffusers':
-            try:
-                model = ControlNetModel.from_pretrained(controlnet_model, variant="fp16", use_safetensors=True, torch_dtype=torch.float16).to(self.device)     
-                return model
-            except Exception as e:
-                pass
-            
-            try:
-                model = ControlNetModel.from_pretrained(controlnet_model, use_safetensors=True, torch_dtype=torch.float16).to(self.device)
-                return model
-            except Exception as e:
-                pass
+            for kwargs in [{"variant": "fp16", "use_safetensors": True}, {"use_safetensors": True}, {}]:
+                try:
+                    return ControlNetModel.from_pretrained(controlnet_model, torch_dtype=torch.float16, **kwargs).to(self.device)
+                except Exception:
+                    continue
 
-            try:
-                model = ControlNetModel.from_pretrained(controlnet_model, torch_dtype=torch.float16).to(self.device)
-                return model
-            except Exception as e:
-                pass
-
-        if not model:
-            print("Failed to load Controlnet!")
-            
-        return model
+        print("Failed to load Controlnet!")
+        return None
    
     def create_t2i(self, t2i_model):
         model = None
@@ -372,6 +361,8 @@ class UD_Processor():
 
     def unload(self):
 
+        self.manager.set_progress_text('Unloading loaded model...')
+
         for item in ['pipe']:
             if hasattr(self, item):
                 # getattr(self, item).to('cpu')
@@ -385,4 +376,5 @@ class UD_Processor():
         self.loaded_controlnets = None
         self.loaded_t2i = None
 
+        self.manager.set_progress_text('Unloaded')
         print("GPU cache has been cleared.")
