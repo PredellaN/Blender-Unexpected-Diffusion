@@ -89,11 +89,10 @@ class UD_Processor():
 
     device = get_device()
 
-    ws = None
+    callbacks = None
 
-    def run(self, ws, params):
-        self.ws = ws
-        pg = getattr(self.ws, PG_NAME_LC)
+    def run(self, params, callbacks=None):
+        self.callbacks = callbacks
 
         target_width = round((params['width'] * params['scale'] / 100) / 16) * 16
         target_height = round((params['height'] * params['scale'] / 100) / 16) * 16
@@ -213,9 +212,8 @@ class UD_Processor():
         else:
             return None
 
-    def upscale(self, ws, params): 
-        self.ws = ws
-        pg = getattr(self.ws, PG_NAME_LC)
+    def upscale(self, params, callbacks): 
+        self.callbacks = callbacks
 
         image = Image.open(params['temp_image_filepath'])
 
@@ -226,8 +224,8 @@ class UD_Processor():
 
         if params['mode'] == 'upscale_re':
             
-            pg.progress = 0
-            pg.progress_text = 'Resizing with Realesrgan ...'
+            self.callbacks['set_progress'](0)
+            self.callbacks['set_progress_text']('Resizing with Realesrgan ...')
 
             # Resize to 4x using realesrgan
             realesrgan = Realesrgan(gpuid = gpudetector.get_dedicated_gpu(), model = 4)
@@ -291,9 +289,8 @@ class UD_Processor():
             show_image = True,
             output_type = 'latent',
         ):
-        pg = getattr(self.ws, PG_NAME_LC)
 
-        pg.progress = 0
+        self.callbacks['set_progress'](0)
 
         with torch.no_grad(): 
             # Initializing dict with common parameters
@@ -312,7 +309,7 @@ class UD_Processor():
             # INITIALIZE PIPE IF NEEDED
             if self.loaded_model != pipeline_model or self.loaded_model_type != pipeline_type or self.loaded_vae != vae_model or self.loaded_controlnets != controlnet_models or self.loaded_t2i != t2i_models:
                 
-                pg.progress_text = 'Loading pipeline...'
+                self.callbacks['set_progress_text']('Loading pipeline...')
                 model_params = {
                     'torch_dtype': torch.float16,
                     'add_watermarker': False,
@@ -401,18 +398,14 @@ class UD_Processor():
                 return decoded_image
             
     def pipe_callback(self, pipe, step_index, timestep, callback_kwargs):
-        pg = getattr(self.ws, PG_NAME_LC)
-
-        if pg.stop_process == 1:
-            pg.stop_process = 0
+        if self.callbacks['stop_process']() == 1:
+            self.callbacks['set_stop_process'](0)
             raise Exception("Inference cancelled.") ## No cleaner way found
 
-        pg.progress = int((step_index + 1) / pipe.num_timesteps * 100)
-        pg.progress_text = f'Step {step_index + 1} / {pipe.num_timesteps}'
+        self.callbacks['set_progress'](int((step_index + 1) / pipe.num_timesteps * 100))
+        self.callbacks['set_progress_text'](f'Step {step_index + 1} / {pipe.num_timesteps}')
 
-        for screen in self.ws.screens:
-            for area in screen.areas:
-                area.tag_redraw()
+        self.callbacks['redraw']()
 
         return callback_kwargs
     

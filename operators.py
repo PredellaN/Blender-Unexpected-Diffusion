@@ -17,17 +17,26 @@ class Run_UD(Operator):
 
     mode: bpy.props.StringProperty() # type: ignore
 
-    def ud_task(self, parameters, image_area, ws):
+    def ud_task(self, params, image_area, ws):
         pg = getattr(ws, PG_NAME_LC)
-        
+
+        callbacks = {
+            'set_running': lambda value: setattr(pg, 'running', value),
+            'set_progress': lambda value: setattr(pg, 'progress', value),
+            'set_progress_text': lambda value: setattr(pg, 'progress_text', value),
+            'set_stop_process': lambda value: setattr(pg, 'stop_process', value),
+            'stop_process': lambda: pg.stop_process,
+            'redraw': lambda: [area.tag_redraw() for screen in ws.screens for area in screen.areas]
+        }
+
         from . import ud_processor as ud
         worker = ud.UD_Processor()
 
         try:
-            result = worker.run(ws, params = parameters)
+            result = worker.run(params=params, callbacks=callbacks)
             if result:
-                image = bpy.data.images.load(parameters['temp_image_filepath'])
-                image.name = parameters['prompt'][:57] + "-" + str(parameters['seed'])
+                image = bpy.data.images.load(params['temp_image_filepath'])
+                image.name = params['prompt'][:57] + "-" + str(params['seed'])
                 image_area.spaces.active.image = image
 
         except Exception as e:
@@ -53,7 +62,7 @@ class Run_UD(Operator):
                 bpy.data.images[space.image.name].save_render(parameters['temp_image_filepath'])
                 bpy.context.scene.view_settings.view_transform = original_view_transform
 
-                worker.upscale(ws, params = parameters)
+                worker.upscale(params = parameters)
 
                 image = bpy.data.images.load(parameters['temp_image_filepath'])
                 image.name = parameters['prompt'][:57] + "-" + str(parameters['seed'])
