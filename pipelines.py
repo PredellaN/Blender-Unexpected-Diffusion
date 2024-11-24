@@ -12,6 +12,8 @@ pipeline_settings = {
 
     "FluxPipeline": [],
     "FluxImg2ImgPipeline": ["image", "strength"],
+
+    "StableDiffusion3Pipeline": ['negative_prompt'],
 }
 
 for key in pipeline_settings:

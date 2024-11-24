@@ -1,7 +1,7 @@
 
 import os, platform
 
-from diffusers import FluxPipeline, FluxImg2ImgPipeline, T2IAdapter, MultiAdapter, EDMDPMSolverMultistepScheduler, DPMSolverMultistepScheduler, StableDiffusionXLControlNetPipeline, DiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionXLAdapterPipeline, StableDiffusionUpscalePipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline, StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLControlNetImg2ImgPipeline, ControlNetModel, AutoencoderKL
+from diffusers import StableDiffusion3Pipeline, FluxPipeline, FluxImg2ImgPipeline, T2IAdapter, MultiAdapter, EDMDPMSolverMultistepScheduler, DPMSolverMultistepScheduler, StableDiffusionXLControlNetPipeline, DiffusionPipeline, StableDiffusionXLPipeline, StableDiffusionXLAdapterPipeline, StableDiffusionUpscalePipeline, StableDiffusionXLImg2ImgPipeline, StableDiffusionXLInpaintPipeline, StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLControlNetImg2ImgPipeline, ControlNetModel, AutoencoderKL
 import numpy as np
 import torch
 from PIL import Image, ImageEnhance
@@ -235,7 +235,7 @@ class UD_Processor():
                 self.manager.set_progress_text('Loading pipeline...')
 
                 model_params = {
-                    'torch_dtype': torch.bfloat16,
+                    'torch_dtype': torch.bfloat16 if params['pipeline_type'] == 'SD3' else torch.float16,
                 }
 
                 if params['pipeline_type'] == 'SDXL':
@@ -258,7 +258,7 @@ class UD_Processor():
                 
                 try:
                     try:
-                        self.pipe = globals()[pipeline_type].from_pretrained(pipeline_model, **model_params, variant= 'fp16')
+                        self.pipe = globals()[pipeline_type].from_pretrained(pipeline_model, **model_params, variant='fp16')
                         print("Loaded fp16 weights")
                     except Exception as e2:
                         print(f"fp16 variant not available. Using fp32.")
@@ -269,6 +269,10 @@ class UD_Processor():
                         self.pipe.enable_vae_tiling()
                     elif params['pipeline_type'] == 'FLUX':
                         self.pipe.enable_sequential_cpu_offload()
+                        self.pipe.vae.enable_slicing()
+                        self.pipe.vae.enable_tiling()
+                    elif params['pipeline_type'] == 'SD3':
+                        self.pipe.enable_model_cpu_offload()
                         self.pipe.vae.enable_slicing()
                         self.pipe.vae.enable_tiling()
 
@@ -335,6 +339,8 @@ class UD_Processor():
             if init_image:
                 return 'FluxImg2ImgPipeline'
             return 'FluxPipeline'
+        elif params['pipeline_type'] == 'SD3':
+            return 'StableDiffusion3Pipeline'
         
     def create_controlnet(self, controlnet_model):
         if CONTROLNET_MODELS[controlnet_model]['model_type'] == 'diffusers':

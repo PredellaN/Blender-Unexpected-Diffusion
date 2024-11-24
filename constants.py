@@ -24,6 +24,9 @@ DIFFUSION_MODELS = [
     DiffModel('playgroundai/playground-v2.5-1024px-aesthetic', 'Playground V2.5 Aesthetic', 'SDXL'),
 
     DiffModel('black-forest-labs/FLUX.1-schnell', 'FLUX.1-schnell', 'FLUX'),
+
+    DiffModel('stabilityai/stable-diffusion-3.5-medium', 'Stable Diffusion 3.5 Medium', 'SD3'),
+    DiffModel('stabilityai/stable-diffusion-3.5-large', 'Stable Diffusion 3.5 Large', 'SD3'),
 ]
 
 CONTROLNET_MODELS = {
